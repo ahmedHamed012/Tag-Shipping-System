@@ -1,0 +1,61 @@
+.modal.fade(id="editMerchantModal", tabindex="-1")
+  .modal-dialog.modal-lg
+    .modal-content
+      .modal-header
+        h5.modal-title تعديل بيانات التاجر
+        button.btn-close(type="button", data-bs-dismiss="modal")
+      .modal-body
+        form#editMerchantForm
+          input#merchantId(type="hidden")
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="merchantName")
+                | الاسم
+                span.text-danger *
+              input#merchantName.form-control(type="text", required, placeholder="أدخل اسم التاجر")
+            .col-md-6.mb-3
+              label.form-label(for="merchantPhone")
+                | رقم الهاتف
+                span.text-danger *
+              input#merchantPhone.form-control(type="text", required, placeholder="أدخل رقم الهاتف")
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="merchantAddress")
+                | العنوان
+                span.text-danger *
+              input#merchantAddress.form-control(type="text", required, placeholder="أدخل عنوان التاجر")
+            .col-md-6.mb-3
+              label.form-label(for="merchantCommercialRegister") السجل التجاري
+              input#merchantCommercialRegister.form-control(type="text", placeholder="أدخل رقم السجل التجاري")
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="merchantTaxCard") البطاقة الضريبية
+              input#merchantTaxCard.form-control(type="text", placeholder="أدخل رقم البطاقة الضريبية")
+            .col-md-6.mb-3
+              label.form-label(for="merchantWebsite") الموقع الإلكتروني
+              input#merchantWebsite.form-control(type="url", placeholder="https://example.com")
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="merchantFacebookPage") صفحة فيسبوك
+              input#merchantFacebookPage.form-control(type="url", placeholder="https://facebook.com/page")
+            .col-md-6.mb-3
+              label.form-label(for="merchantInstagramPage") صفحة انستجرام
+              input#merchantInstagramPage.form-control(type="url", placeholder="https://instagram.com/page")
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="merchantMaxShipmentWeight") الحد الاقصى لحمولة الشحن للتاجر (كجم)
+              input#merchantMaxShipmentWeight.form-control(type="number", step="0.01", min="0", placeholder="مثال: 30")
+            .col-md-6.mb-3
+              label.form-label(for="merchantExtraWeightFeePerKg") المبلغ المضاف نظير الحمولة الزائدة لكل 1 كيلو
+              input#merchantExtraWeightFeePerKg.form-control(type="number", step="0.01", min="0", placeholder="مثال: 15")
+          .row
+            .col-12.mb-3
+              label.form-label(for="merchantAttachments") مرفقات إضافية
+              input#merchantAttachments.form-control(type="file", multiple, accept="image/*,.pdf,.doc,.docx,.xlsx")
+      .modal-footer
+        button.btn.btn-secondary(type="button", data-bs-dismiss="modal") إغلاق
+        button.btn.btn-primary(type="button", onclick="saveMerchant()") حفظ التعديلات

@@ -1,0 +1,21 @@
+.d-flex.flex-column.side-bar.px-3.justify-content-between
+  .logo.title.mt-3.text-center.py-2(style="border-bottom: 1px solid #eee")
+    img.logo-img(src="/assets/Images/logo.png" height="50px")
+  
+  .links.d-flex.flex-column.mt-3
+    a.link-item.d-flex.gap-4.align-items-center.my-1.px-3(href="/dashboard")
+      i.pi.pi-home
+      span.link-title الرئيسية
+    
+    .my-1
+      a.link-item.d-flex.gap-4.align-items-center.px-3(href="/couriers")
+        i.pi.pi-truck
+        span.link-title إدارة المندوبين
+      .d-flex.flex-column.ps-5.mt-1
+        a.link-item.small.py-1(href="/couriers") كل المندوبين
+        a.link-item.small.py-1(href="/couriers/settlement") تسوية المندوبين
+        a.link-item.small.py-1(href="/couriers/assign-shipments") تعيين الشحنات
+      
+    a.link-item.d-flex.gap-4.align-items-center.my-1.px-3(href="/users")
+      i.pi.pi-users
+      span.link-title المستخدمين

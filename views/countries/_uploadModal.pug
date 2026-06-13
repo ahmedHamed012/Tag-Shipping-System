@@ -1,0 +1,146 @@
+// Modal for uploading Excel file
+#uploadModal.modal.fade(tabindex="-1")
+  .modal-dialog
+    .modal-content
+      .modal-header.bg-info.text-white
+        h5.modal-title
+          i.bi.bi-cloud-upload.me-2
+          | رفع ملف محافظات ومدن
+        button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal")
+
+      .modal-body
+        .alert.alert-info(role="alert")
+          i.bi.bi-info-circle.me-2
+          strong نموذج الملف:
+          ul.mb-0.mt-2
+            li الصف الأول يحتوي على رؤوس الأعمدة
+            li كل صف يحتوي على: اسم المحافظة (عربي)، الاسم الإنجليزي، اسم المدينة (عربي)، الاسم الإنجليزي
+            li إذا كانت هناك عدة مدن لنفس المحافظة، كرر اسم المحافظة
+
+        form#uploadForm
+          .mb-3
+            label.form-label(for="excelFile")
+              | اختر ملف Excel
+              span.text-danger *
+            input#excelFile.form-control(
+              type="file"
+              name="file"
+              accept=".xlsx,.xls"
+              required
+            )
+            .form-text
+              | الملفات المدعومة: .xlsx, .xls
+
+        #uploadResults.d-none
+          .alert(class="alert-info" id="resultsAlert")
+            strong نتائج الرفع:
+            #resultsContent
+
+      .modal-footer
+        button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
+          | إلغاء
+        button#uploadBtn.btn.btn-info(type="button")
+          i.bi.bi-upload.me-2
+          | رفع
+
+  script.
+    document.getElementById('uploadBtn').addEventListener('click', async function() {
+      const fileInput = document.getElementById('excelFile');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('اختر ملف أولاً');
+        return;
+      }
+
+      // Disable button and show loading
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جاري الرفع...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/countries/api/bulk-upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          displayUploadResults(data.data);
+        } else {
+          alert('خطأ: ' + data.error);
+          this.disabled = false;
+          this.innerHTML = '<i class="bi bi-upload me-2"></i>رفع';
+        }
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-upload me-2"></i>رفع';
+      }
+    });
+
+    function displayUploadResults(results) {
+      const resultsDiv = document.getElementById('uploadResults');
+      const resultsContent = document.getElementById('resultsContent');
+      const resultsAlert = document.getElementById('resultsAlert');
+      
+      let html = '<div class="mt-2">';
+
+      // Governorates
+      html += '<div class="mb-3">';
+      html += '<h6><i class="bi bi-geo-alt me-2"></i>المحافظات</h6>';
+      html += `<p class="mb-1"><span class="badge bg-success">${results.governorates.success} نجح</span></p>`;
+      if (results.governorates.failed > 0) {
+        html += `<p class="mb-1"><span class="badge bg-danger">${results.governorates.failed} فشل</span></p>`;
+      }
+      if (results.newGovernoratesAdded.length > 0) {
+        html += '<small><strong>محافظات جديدة:</strong> ' + results.newGovernoratesAdded.join(', ') + '</small>';
+      }
+      if (results.governorates.errors.length > 0) {
+        html += '<div class="alert alert-sm alert-danger mt-2"><small>' + results.governorates.errors.join('<br>') + '</small></div>';
+      }
+      html += '</div>';
+
+      // Cities
+      html += '<div class="mb-3">';
+      html += '<h6><i class="bi bi-building me-2"></i>المدن</h6>';
+      html += `<p class="mb-1"><span class="badge bg-success">${results.cities.success} نجح</span></p>`;
+      if (results.cities.failed > 0) {
+        html += `<p class="mb-1"><span class="badge bg-danger">${results.cities.failed} فشل</span></p>`;
+      }
+      if (results.newCitiesAdded.length > 0) {
+        html += '<small><strong>مدن جديدة:</strong> ' + results.newCitiesAdded.join(', ') + '</small>';
+      }
+      if (results.cities.errors.length > 0) {
+        html += '<div class="alert alert-sm alert-danger mt-2"><small>' + results.cities.errors.join('<br>') + '</small></div>';
+      }
+      html += '</div>';
+
+      html += '</div>';
+
+      resultsContent.innerHTML = html;
+      resultsAlert.className = 'alert alert-success';
+      resultsDiv.classList.remove('d-none');
+
+      // Reset upload button
+      document.getElementById('uploadBtn').disabled = false;
+      document.getElementById('uploadBtn').innerHTML = '<i class="bi bi-upload me-2"></i>رفع';
+
+      // Show completion message
+      setTimeout(() => {
+        alert('تم الرفع بنجاح');
+        bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+        window.location.reload();
+      }, 2000);
+    }
+
+    // Reset form when modal is closed
+    document.getElementById('uploadModal').addEventListener('hidden.bs.modal', function() {
+      document.getElementById('uploadForm').reset();
+      document.getElementById('uploadResults').classList.add('d-none');
+      document.getElementById('uploadBtn').disabled = false;
+      document.getElementById('uploadBtn').innerHTML = '<i class="bi bi-upload me-2"></i>رفع';
+    });

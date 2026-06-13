@@ -1,0 +1,14 @@
+extends ./layouts/layout
+
+block content
+  .container.mt-5
+    .row
+      .col-md-6.offset-md-3
+        .card.border-danger
+          .card-body.text-center
+            i.bi.bi-exclamation-triangle(style="font-size: 3rem; color: #dc3545;")
+            h3.card-title.mt-3 حدث خطأ
+            p.card-text= error
+            a.btn.btn-primary.mt-3(href="/")
+              i.bi.bi-house.me-2
+              | العودة إلى الرئيسية

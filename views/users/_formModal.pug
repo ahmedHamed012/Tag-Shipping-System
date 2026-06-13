@@ -1,0 +1,161 @@
+//- Add/Edit User Modal
+.modal.fade(id="addUserModal", tabindex="-1")
+  .modal-dialog.modal-lg
+    .modal-content
+      .modal-header
+        h5#modalTitle.modal-title إضافة مستخدم جديد
+        button.btn-close(type="button", data-bs-dismiss="modal")
+
+      .modal-body
+        form#userForm
+          input#userId(type="hidden", value="")
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="fullName")
+                | الاسم الكامل
+                span.text-danger *
+
+              input#fullName.form-control(
+                type="text",
+                required,
+                placeholder="أدخل الاسم الكامل"
+              )
+
+            .col-md-6.mb-3
+              label.form-label(for="email")
+                | البريد الإلكتروني
+                span.text-danger *
+
+              input#email.form-control(
+                type="email",
+                required,
+                placeholder="أدخل البريد الإلكتروني"
+              )
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="phone")
+                | رقم الهاتف
+                span.text-danger *
+
+              input#phone.form-control(
+                type="tel",
+                required,
+                placeholder="أدخل رقم الهاتف"
+              )
+
+            .col-md-6.mb-3
+              label.form-label(for="nationalId")
+                | رقم الهوية الوطنية
+                span.text-danger *
+
+              input#nationalId.form-control(
+                type="text",
+                required,
+                placeholder="أدخل رقم الهوية"
+              )
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="address")
+                | العنوان (اختياري)
+
+              textarea#address.form-control(
+                rows="2",
+                placeholder="أدخل العنوان"
+              )
+
+            .col-md-6.mb-3
+              label.form-label(for="role")
+                | الدور
+                span.text-danger *
+
+              select#role.form-select(required)
+                option(value="OPERATION") العمليات
+                option(value="CUSTOMER_SERVICE") خدمة العملاء
+                option(value="ADMIN") إدارة
+
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="password")
+                | الكلمة السرية
+                span.text-danger *
+
+              input#password.form-control(
+                type="password",
+                placeholder="الكلمة السرية"
+              )
+
+          //- File Uploads Section
+          .row.mt-4
+            .col-12
+              h6.mb-3
+                i.bi.bi-images.me-2
+                | المرفقات
+
+          .row
+            .col-md-4.mb-3
+              label.form-label(for="profilePicture")
+                | صورة الملف الشخصي
+
+              input#profilePicture.form-control(
+                type="file",
+                accept="image/*"
+              )
+              .form-text
+                small.text-muted يُفضل صورة مربعة بحجم 200x200 بكسل
+
+              //- Show current profile picture if exists
+              #currentProfilePictureContainer.mt-2(style="display: none;")
+                small.text-muted دائرة حالية:
+                br
+                img#currentProfilePicture.mt-1(
+                  style="width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid #dee2e6;"
+                )
+
+            .col-md-4.mb-3
+              label.form-label(for="idCardFront")
+                | صورة الهوية (الوجه الأمامي)
+
+              input#idCardFront.form-control(
+                type="file",
+                accept="image/*"
+              )
+              .form-text
+                small.text-muted يجب أن تكون الصورة واضحة
+
+              //- Show current ID front if exists
+              #currentIdCardFrontContainer.mt-2(style="display: none;")
+                small.text-muted الصورة الحالية:
+                br
+                img#currentIdCardFront.mt-1(
+                  style="width: 80px; height: 60px; object-fit: cover; border: 1px solid #dee2e6; border-radius: 4px;"
+                )
+
+            .col-md-4.mb-3
+              label.form-label(for="idCardBack")
+                | صورة الهوية (الوجه الخلفي)
+
+              input#idCardBack.form-control(
+                type="file",
+                accept="image/*"
+              )
+              .form-text
+                small.text-muted يجب أن تكون الصورة واضحة
+
+              //- Show current ID back if exists
+              #currentIdCardBackContainer.mt-2(style="display: none;")
+                small.text-muted الصورة الحالية:
+                br
+                img#currentIdCardBack.mt-1(
+                  style="width: 80px; height: 60px; object-fit: cover; border: 1px solid #dee2e6; border-radius: 4px;"
+                )
+
+      .modal-footer
+        button.btn.btn-secondary(type="button", data-bs-dismiss="modal")
+          | إغلاق
+
+        button.btn.btn-primary(type="button", onclick="saveUser()")
+          i.bi.bi-check.me-2
+          | حفظ المستخدم

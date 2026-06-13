@@ -1,0 +1,245 @@
+extends ../layouts/layout
+
+block content
+  .container-fluid.py-4
+    .row.mb-4
+      .col-md-8
+        h2.mb-0
+          i.bi.bi-geo-alt-fill.me-2
+          | إدارة المحافظات والمدن
+      .col-md-4.text-end
+        button.btn.btn-primary.btn-sm(data-bs-toggle="modal" data-bs-target="#governorateModal")
+          i.bi.bi-plus-circle.me-2
+          | إضافة محافظة
+        button.btn.btn-success.btn-sm.ms-2(data-bs-toggle="modal" data-bs-target="#uploadModal")
+          i.bi.bi-cloud-upload.me-2
+          | رفع ملف
+        a.btn.btn-info.btn-sm.ms-2(href="/countries/api/download-template" download="template-countries.xlsx")
+          i.bi.bi-download.me-2
+          | تحميل النموذج
+
+    // Search and filters
+    .card.mb-3
+      .card-body
+        .row
+          .col-md-6
+            .input-group
+              span.input-group-text
+                i.bi.bi-search
+              input.form-control(
+                type="text"
+                id="searchInput"
+                placeholder="ابحث عن محافظة..."
+                value=search
+              )
+          .col-md-3
+            select.form-select#limitSelect
+              option(value="10" selected=(limit === 10)) 10 نتائج
+              option(value="25" selected=(limit === 25)) 25 نتيجة
+              option(value="50" selected=(limit === 50)) 50 نتيجة
+          .col-md-3.text-end
+            span.text-muted
+              strong= totalGovernorates
+              |  محافظة
+
+    // Governorates Table
+    .card
+      .table-responsive
+        table.table.table-hover.mb-0
+          thead.table-light
+            tr
+              th.text-end #
+              th.text-end اسم المحافظة (عربي)
+              th.text-end الاسم الإنجليزي
+              th.text-center عدد المدن
+              th.text-center أضيفت بواسطة
+              th.text-center التاريخ
+              th.text-center الإجراءات
+
+          tbody
+            if governorates.length > 0
+              each governorate, index in governorates
+                tr
+                  td= (currentPage - 1) * limit + index + 1
+                  td
+                    strong= governorate.nameAr
+                  td
+                    small.text-muted= governorate.nameEn || "-"
+                  td.text-center
+                    span.badge.bg-info= governorate._count.cities
+                  td.text-center
+                    small.text-muted= (governorate.creator && governorate.creator.fullName) || "-"
+                  td.text-center
+                    small.text-muted= new Date(governorate.createdAt).toLocaleDateString('ar-SA')
+                  td.text-center
+                    .btn-group(role="group")
+                      button.btn.btn-sm.btn-outline-warning(
+                        type="button"
+                        onclick=`editGovernorate('${governorate.id}', '${governorate.nameAr}', '${governorate.nameEn || ''}')`
+                        title="تعديل"
+                      )
+                        i.bi.bi-pencil
+                      button.btn.btn-sm.btn-outline-info(
+                        type="button"
+                        onclick=`viewCities('${governorate.id}', '${governorate.nameAr}')`
+                        title="المدن"
+                      )
+                        i.bi.bi-building
+                      button.btn.btn-sm.btn-outline-danger(
+                        type="button"
+                        onclick=`deleteGovernorate('${governorate.id}', '${governorate.nameAr}')`
+                        title="حذف"
+                      )
+                        i.bi.bi-trash
+            else
+              tr
+                td(colspan="7").text-center.py-4
+                  .text-muted
+                    i.bi.bi-inbox.me-2
+                    | لا توجد محافظات
+
+    //Pagination
+    if totalPages > 1
+      nav.mt-4(aria-label="Page navigation")
+        ul.pagination.justify-content-center
+          li.page-item(class=(currentPage === 1 ? 'disabled' : ''))
+            a.page-link(href=`/countries?page=1&limit=${limit}&search=${search}`)
+              | الأولى
+          li.page-item(class=(currentPage === 1 ? 'disabled' : ''))
+            a.page-link(href=`/countries?page=${currentPage - 1}&limit=${limit}&search=${search}`)
+              | السابقة
+          each page in Array(totalPages).fill(0).map((_, i) => i + 1)
+            li.page-item(class=(page === currentPage ? 'active' : ''))
+              a.page-link(href=`/countries?page=${page}&limit=${limit}&search=${search}`)= page
+          li.page-item(class=(currentPage === totalPages ? 'disabled' : ''))
+            a.page-link(href=`/countries?page=${currentPage + 1}&limit=${limit}&search=${search}`)
+              | التالية
+          li.page-item(class=(currentPage === totalPages ? 'disabled' : ''))
+            a.page-link(href=`/countries?page=${totalPages}&limit=${limit}&search=${search}`)
+              | الأخيرة
+
+  // Modals
+  include _governorateModal.pug
+  include _cityModal.pug
+  include _uploadModal.pug
+
+  script.
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('keyup', function(e) {
+      if (e.key === 'Enter') {
+        const search = this.value;
+        window.location.href = `/countries?page=1&limit=${document.getElementById('limitSelect').value}&search=${encodeURIComponent(search)}`;
+      }
+    });
+
+    document.getElementById('limitSelect').addEventListener('change', function() {
+      const limit = this.value;
+      const search = new URLSearchParams(window.location.search).get('search') || '';
+      window.location.href = `/countries?page=1&limit=${limit}&search=${encodeURIComponent(search)}`;
+    });
+
+    // Edit governorate
+    function editGovernorate(id, nameAr, nameEn) {
+      document.getElementById('governorateId').value = id;
+      document.getElementById('governorateNameAr').value = nameAr;
+      document.getElementById('governorateNameEn').value = nameEn;
+      document.getElementById('governorateModalTitle').textContent = 'تعديل محافظة';
+      document.getElementById('governorateForm').dataset.action = 'update';
+      new bootstrap.Modal(document.getElementById('governorateModal')).show();
+    }
+
+    // Delete governorate
+    function deleteGovernorate(id, name) {
+      if (!confirm(`هل تريد حذف المحافظة: ${name}؟`)) return;
+      
+      fetch(`/countries/api/delete-governorate/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            alert('تم الحذف بنجاح');
+            window.location.reload();
+          } else {
+            alert('خطأ: ' + data.error);
+          }
+        })
+        .catch(e => alert('خطأ: ' + e.message));
+    }
+
+    // View cities for a governorate
+    function viewCities(governorateId, governorateName) {
+      // Store the current governorate ID for city operations
+      document.getElementById('currentGovernorateId').value = governorateId;
+      document.getElementById('citiesTitle').textContent = `المدن في ${governorateName}`;
+      
+      // Load cities
+      fetch(`/countries/api/cities/${governorateId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            displayCities(data.cities);
+            new bootstrap.Modal(document.getElementById('citiesModal')).show();
+          } else {
+            alert('خطأ: ' + data.error);
+          }
+        })
+        .catch(e => alert('خطأ: ' + e.message));
+    }
+
+    // Display cities in modal
+    function displayCities(cities) {
+      const tbody = document.getElementById('citiesTableBody');
+      tbody.innerHTML = '';
+      
+      if (cities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">لا توجد مدن</td></tr>';
+        return;
+      }
+
+      cities.forEach((city, index) => {
+        const row = `<tr>
+          <td>${index + 1}</td>
+          <td><strong>${city.nameAr}</strong></td>
+          <td><small class="text-muted">${city.nameEn || '-'}</small></td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-warning" onclick="editCity('${city.id}', '${city.nameAr}', '${city.nameEn || ''}')" title="تعديل">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="deleteCity('${city.id}', '${city.nameAr}')" title="حذف">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      });
+    }
+
+    // Edit city
+    function editCity(id, nameAr, nameEn) {
+      document.getElementById('cityId').value = id;
+      document.getElementById('cityNameAr').value = nameAr;
+      document.getElementById('cityNameEn').value = nameEn;
+      document.getElementById('cityModalTitle').textContent = 'تعديل مدينة';
+      document.getElementById('cityForm').dataset.action = 'update';
+      // You might want to hide governorate selector when editing
+      document.getElementById('governorateSelector').style.display = 'none';
+      new bootstrap.Modal(document.getElementById('cityModal')).show();
+    }
+
+    // Delete city
+    function deleteCity(id, name) {
+      if (!confirm(`هل تريد حذف المدينة: ${name}؟`)) return;
+      
+      fetch(`/countries/api/delete-city/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            alert('تم الحذف بنجاح');
+            location.reload();
+          } else {
+            alert('خطأ: ' + data.error);
+          }
+        })
+        .catch(e => alert('خطأ: ' + e.message));
+    }

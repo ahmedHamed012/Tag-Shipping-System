@@ -1,0 +1,61 @@
+// Modal for viewing courier details
+#viewModal.modal.fade(tabindex="-1")
+  .modal-dialog.modal-lg
+    .modal-content
+      .modal-header.bg-info.text-white
+        h5.modal-title
+          i.bi.bi-info-circle.me-2
+          | تفاصيل الساعي
+        button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal")
+
+      .modal-body
+        .row.g-3
+          .col-md-6
+            div
+              strong البيانات الشخصية
+              hr
+              div.mb-2
+                strong الاسم:
+                span.ms-2#viewCourierName
+              div.mb-2
+                strong الهاتف:
+                span.ms-2#viewCourierPhone
+              div.mb-2
+                strong البريد:
+                span.ms-2#viewCourierEmail
+              div.mb-2
+                strong العنوان:
+                span.ms-2#viewCourierAddress
+
+          .col-md-6
+            div
+              strong بيانات الهوية
+              hr
+              div.mb-2
+                strong رقم الهوية:
+                span.ms-2#viewCourierNationalId
+              div.mb-2
+                strong رقم رخصة القيادة:
+                span.ms-2#viewCourierDrivingLicense
+
+        .card.mt-3
+          .card-header.bg-light
+            h6.mb-0
+              i.bi.bi-file-image.me-2
+              | الوثائق المرفقة
+
+          .card-body#viewCourierDocuments
+            small.text-muted جاري التحميل...
+
+        .card.mt-3
+          .card-header.bg-light
+            h6.mb-0
+              i.bi.bi-box-seam.me-2
+              | آخر 10 شحنات
+
+          .card-body#viewCourierShipments
+            small.text-muted جاري التحميل...
+
+      .modal-footer
+        button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
+          | إغلاق

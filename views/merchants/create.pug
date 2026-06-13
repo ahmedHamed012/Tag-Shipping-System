@@ -1,0 +1,305 @@
+extends ../layouts/layout
+
+block content
+  .container-fluid
+    .row.mb-4
+      .col-12
+        .d-flex.justify-content-between.align-items-center
+          .d-flex.align-items-center
+            .d-flex.justify-content-center.align-items-center.me-3(style="width: 30px; height: 30px; border-radius: 5px; background-color: #00b07540; color: #00b075; border: 1px dashed #eee;")
+              i.bi.bi-cash-stack
+            .d-flex.flex-column
+              h1.mb-0.h5 إدارة قائمة الأسعار
+              small.text-muted إدارة و تعريف تخصيص قائمة الاسعار المناسبة لكل تاجر
+          a.btn.btn-outline-secondary(href="/merchants")
+            i.bi.bi-arrow-right-circle.me-2
+            | العودة إلى قائمة التجار
+
+    .card.mb-3
+      .card-body
+        .text-muted.mb-3
+          | يمكنك إضافة بنود قائمة الأسعار من الصف التالي، ثم ستظهر تلقائيا في الجدول بالأسفل.
+        .table-responsive
+          table.table.table-bordered.align-middle.mb-0
+            thead.table-light
+              tr
+                th المحافظة
+                th المدينة
+                th حالة الشحنة
+                th السعر
+                th.text-center(style="width: 110px;") الإجراء
+            tbody
+              tr
+                td
+                  select#plGovernorate.form-select(onchange="handleGovernorateChange()")
+                    option(value="") اختر المحافظة
+                td
+                  select#plCity.form-select
+                    option(value="") اختر المدينة
+                td
+                  select#plShipmentStatus.form-select
+                    option(value="") اختر الحالة
+                    option(value="تم التسليم") تم التسليم
+                    option(value="قيد الشحن") قيد الشحن
+                    option(value="مرتجع") مرتجع
+                    option(value="مؤجل") مؤجل
+                td
+                  input#plPrice.form-control(type="number", step="0.01", min="0", placeholder="0.00")
+                td.text-center
+                  button#priceListActionBtn.btn.btn-sm.btn-success(type="button", onclick="addPriceListItem()")
+                    i.bi.bi-plus-lg
+
+    .card
+      .card-body
+        form#merchantCreateForm
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="name")
+                | اسم التاجر
+                span.text-danger *
+              input#name.form-control(type="text", required, placeholder="أدخل اسم التاجر")
+            .col-md-6.mb-3
+              label.form-label(for="phone")
+                | رقم الهاتف
+                span.text-danger *
+              input#phone.form-control(type="text", required, placeholder="أدخل رقم الهاتف")
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="address")
+                | العنوان
+                span.text-danger *
+              input#address.form-control(type="text", required, placeholder="أدخل عنوان التاجر")
+            .col-md-6.mb-3
+              label.form-label(for="commercialRegister") السجل التجاري
+              input#commercialRegister.form-control(type="text", placeholder="أدخل رقم السجل التجاري")
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="taxCard") البطاقة الضريبية
+              input#taxCard.form-control(type="text", placeholder="أدخل رقم البطاقة الضريبية")
+            .col-md-6.mb-3
+              label.form-label(for="website") الموقع الإلكتروني
+              input#website.form-control(type="url", placeholder="https://example.com")
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="facebookPage") صفحة فيسبوك
+              input#facebookPage.form-control(type="url", placeholder="https://facebook.com/page")
+            .col-md-6.mb-3
+              label.form-label(for="instagramPage") صفحة انستجرام
+              input#instagramPage.form-control(type="url", placeholder="https://instagram.com/page")
+          .row
+            .col-md-6.mb-3
+              label.form-label(for="maxShipmentWeight") الحد الاقصى لحمولة الشحن للتاجر (كجم)
+              input#maxShipmentWeight.form-control(type="number", step="0.01", min="0", placeholder="مثال: 30")
+            .col-md-6.mb-3
+              label.form-label(for="extraWeightFeePerKg") المبلغ المضاف نظير الحمولة الزائدة لكل 1 كيلو
+              input#extraWeightFeePerKg.form-control(type="number", step="0.01", min="0", placeholder="مثال: 15")
+          .row
+            .col-12.mb-3
+              label.form-label(for="attachments") مرفقات إضافية
+              input#attachments.form-control(type="file", multiple, accept="image/*,.pdf,.doc,.docx,.xlsx")
+
+          hr
+          .d-flex.justify-content-between.align-items-center.mb-3
+            h5.mb-0 قائمة الأسعار المضافة
+            .w-50
+              input#priceListSearch.form-control(type="text", placeholder="ابحث عن بند قائمة أسعار...", oninput="renderPriceList()")
+          .table-responsive
+            table.table.table-bordered.table-hover
+              thead.table-light
+                tr
+                  th التاجر
+                  th المحافظة
+                  th حالة الشحنة
+                  th المدينة
+                  th السعر
+                  th تاريخ الإضافة
+                  th الإجراءات
+              tbody#priceListBody
+                tr#emptyPriceListRow
+                  td.text-center.text-muted(colspan="7") لا توجد قوائم أسعار حالياً.
+
+          .mt-3
+            button.btn.btn-primary(type="button", onclick="submitMerchant()")
+              i.bi.bi-check-circle.me-2
+              | حفظ التاجر
+
+  script.
+    const priceListItems = [];
+    const citiesByGovernorate = {
+      "القاهرة": ["مدينة نصر", "المعادي", "حلوان", "التجمع"],
+      "الجيزة": ["الدقي", "الهرم", "6 أكتوبر", "الشيخ زايد"],
+      "الإسكندرية": ["سيدي جابر", "سموحة", "العصافرة", "المنتزه"],
+      "المنصورة": ["طلخا", "ميت غمر", "السنبلاوين"],
+      "طنطا": ["المحلة الكبرى", "كفر الزيات", "بسيون"],
+    };
+
+    function handleGovernorateChange() {
+      const governorate = document.getElementById("plGovernorate").value;
+      const citySelect = document.getElementById("plCity");
+      const cities = citiesByGovernorate[governorate] || [];
+
+      citySelect.innerHTML = '<option value="">اختر المدينة</option>';
+      cities.forEach((city) => {
+        const option = document.createElement("option");
+        option.value = city;
+        option.textContent = city;
+        citySelect.appendChild(option);
+      });
+    }
+
+    function addPriceListItem() {
+      const governorate = document.getElementById("plGovernorate").value;
+      const city = document.getElementById("plCity").value;
+      const shipmentStatus = document.getElementById("plShipmentStatus").value;
+      const price = document.getElementById("plPrice").value;
+
+      if (!governorate || !city || !shipmentStatus || !price) {
+        alert("من فضلك أدخل جميع بيانات بند قائمة الأسعار");
+        return;
+      }
+
+      const item = {
+        governorate,
+        city,
+        shipmentStatus,
+        price,
+      };
+      priceListItems.push(item);
+
+      renderPriceList();
+      resetInputRow();
+    }
+
+    function resetInputRow() {
+      document.getElementById("plGovernorate").value = "";
+      document.getElementById("plCity").innerHTML = '<option value="">اختر المدينة</option>';
+      document.getElementById("plCity").value = "";
+      document.getElementById("plShipmentStatus").value = "";
+      document.getElementById("plPrice").value = "";
+    }
+
+    function removePriceListItem(index) {
+      priceListItems.splice(index, 1);
+      renderPriceList();
+    }
+
+    function renderPriceList() {
+      const tbody = document.getElementById("priceListBody");
+      const query = document.getElementById("priceListSearch").value.trim().toLowerCase();
+      const filteredItems = priceListItems
+        .map((item, originalIndex) => ({ item, originalIndex }))
+        .filter((entry) =>
+          [entry.item.governorate, entry.item.city, entry.item.shipmentStatus, entry.item.price]
+            .join(" ")
+            .toLowerCase()
+            .includes(query)
+        );
+
+      if (filteredItems.length === 0) {
+        tbody.innerHTML = '<tr id="emptyPriceListRow"><td colspan="7" class="text-center text-muted">لا توجد قوائم أسعار حالياً.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filteredItems
+        .map((entry) => `
+          <tr>
+            <td>${document.getElementById("name").value || "-"}</td>
+            <td>${entry.item.governorate}</td>
+            <td>${entry.item.shipmentStatus}</td>
+            <td>${entry.item.city}</td>
+            <td>${entry.item.price}</td>
+            <td>${new Date().toLocaleDateString("ar-SA")}</td>
+            <td><button class="btn btn-sm btn-outline-danger" onclick="removePriceListItem(${entry.originalIndex})">حذف</button></td>
+          </tr>
+        `)
+        .join("");
+    }
+
+    async function submitMerchant() {
+      const formData = new FormData();
+      formData.append("name", document.getElementById("name").value);
+      formData.append("phone", document.getElementById("phone").value);
+      formData.append("address", document.getElementById("address").value);
+      formData.append("commercialRegister", document.getElementById("commercialRegister").value);
+      formData.append("taxCard", document.getElementById("taxCard").value);
+      formData.append("website", document.getElementById("website").value);
+      formData.append("facebookPage", document.getElementById("facebookPage").value);
+      formData.append("instagramPage", document.getElementById("instagramPage").value);
+      formData.append("maxShipmentWeight", document.getElementById("maxShipmentWeight").value);
+      formData.append("extraWeightFeePerKg", document.getElementById("extraWeightFeePerKg").value);
+      formData.append("priceList", JSON.stringify(priceListItems));
+
+      const attachments = document.getElementById("attachments").files;
+      for (const file of attachments) formData.append("attachments", file);
+
+      const response = await fetch("/merchants/api/create", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!data.success) return alert(data.error || "حدث خطأ أثناء الحفظ");
+      alert(data.message);
+      window.location.href = "/merchants";
+    }
+
+    // Initialize governorates and cities
+    let governoratesMap = {};
+
+    async function initializeGovernorates() {
+      try {
+        const response = await fetch('/countries/api/governorates-dropdown');
+        const data = await response.json();
+        
+        if (data.success) {
+          const govSelect = document.getElementById('plGovernorate');
+          
+          data.data.forEach(gov => {
+            governoratesMap[gov.id] = gov;
+            
+            const option = document.createElement('option');
+            option.value = gov.nameAr;
+            option.textContent = gov.nameAr;
+            option.dataset.id = gov.id;
+            govSelect.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading governorates:', error);
+      }
+    }
+
+    function handleGovernorateChange() {
+      const select = document.getElementById('plGovernorate');
+      const citySelect = document.getElementById('plCity');
+      const selectedOption = select.options[select.selectedIndex];
+      const govId = selectedOption.dataset.id;
+      
+      citySelect.innerHTML = '<option value="">-- اختر المدينة --</option>';
+      
+      if (govId) {
+        loadCitiesByGovernorate(govId, citySelect);
+      }
+    }
+
+    async function loadCitiesByGovernorate(govId, selectElement) {
+      try {
+        const response = await fetch(`/countries/api/cities/${govId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          data.cities.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city.nameAr;
+            option.textContent = city.nameAr;
+            selectElement.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading cities:', error);
+      }
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeGovernorates();
+    });

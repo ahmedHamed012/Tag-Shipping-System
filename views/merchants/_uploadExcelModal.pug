@@ -1,0 +1,15 @@
+.modal.fade(id="uploadMerchantExcelModal", tabindex="-1")
+  .modal-dialog
+    .modal-content
+      .modal-header
+        h5.modal-title رفع التجار من ملف Excel
+        button.btn-close(type="button", data-bs-dismiss="modal")
+      .modal-body
+        p.text-muted.mb-3
+          | قم برفع ملف Excel بنفس تنسيق القالب لتحميل التجار بشكل جماعي.
+        input#merchantExcelFile.form-control(type="file", accept=".xlsx,.xls")
+      .modal-footer
+        button.btn.btn-secondary(type="button", data-bs-dismiss="modal") إغلاق
+        button.btn.btn-primary(type="button", onclick="uploadMerchantsExcel()")
+          i.bi.bi-upload.me-2
+          | رفع الملف

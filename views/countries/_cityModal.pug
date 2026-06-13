@@ -1,0 +1,182 @@
+// Modal for adding/editing city and viewing cities
+#cityModal.modal.fade(tabindex="-1")
+  .modal-dialog
+    .modal-content
+      .modal-header.bg-success.text-white
+        h5#cityModalTitle.modal-title
+          i.bi.bi-building.me-2
+          | إضافة مدينة
+        button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal")
+
+      .modal-body
+        form#cityForm(data-action="create")
+          input#cityId(type="hidden" name="id")
+          input#currentGovernorateId(type="hidden" name="governorateId")
+
+          #governorateSelector.mb-3
+            label.form-label(for="cityGovernorateSelect")
+              | المحافظة
+              span.text-danger *
+            select#cityGovernorateSelect.form-select(name="governorateId" required)
+              option(value="") -- اختر محافظة --
+              each governorate in governorates || []
+                option(value=governorate.id)= governorate.nameAr
+
+          .mb-3
+            label.form-label(for="cityNameAr")
+              | اسم المدينة (عربي)
+              span.text-danger *
+            input#cityNameAr.form-control(
+              type="text"
+              name="nameAr"
+              placeholder="مثال: الرياض"
+              required
+            )
+
+          .mb-3
+            label.form-label(for="cityNameEn")
+              | الاسم الإنجليزي
+            input#cityNameEn.form-control(
+              type="text"
+              name="nameEn"
+              placeholder="مثال: Riyadh"
+            )
+
+      .modal-footer
+        button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
+          | إلغاء
+        button#citySubmitBtn.btn.btn-success(type="button")
+          i.bi.bi-check-circle.me-2
+          | حفظ
+
+#citiesModal.modal.fade(tabindex="-1")
+  .modal-dialog.modal-lg
+    .modal-content
+      .modal-header.bg-info.text-white
+        h5#citiesTitle.modal-title
+          i.bi.bi-building.me-2
+          | المدن
+        button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal")
+
+      .modal-body
+        .mb-3
+          button.btn.btn-success.btn-sm(
+            type="button"
+            onclick="addNewCity()"
+          )
+            i.bi.bi-plus-circle.me-2
+            | إضافة مدينة
+
+        .table-responsive
+          table.table.table-sm.table-hover
+            thead.table-light
+              tr
+                th.text-end #
+                th.text-end اسم المدينة (عربي)
+                th.text-end الاسم الإنجليزي
+                th.text-center الإجراءات
+            tbody#citiesTableBody
+              tr
+                td(colspan="4").text-center.py-3.text-muted
+                  | جاري التحميل...
+
+      .modal-footer
+        button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
+          | إغلاق
+
+  script.
+    function addNewCity() {
+      const governorateId = document.getElementById('currentGovernorateId').value;
+      if (!governorateId) {
+        alert('خطأ: لم يتم العثور على المحافظة');
+        return;
+      }
+
+      // Reset city form
+      document.getElementById('cityForm').reset();
+      document.getElementById('cityForm').dataset.action = 'create';
+      document.getElementById('cityId').value = '';
+      document.getElementById('currentGovernorateId').value = governorateId;
+      document.getElementById('cityGovernorateSelect').value = governorateId;
+      document.getElementById('cityModalTitle').textContent = 'إضافة مدينة';
+      document.getElementById('governorateSelector').style.display = 'block';
+
+      // Close cities modal and open city modal
+      bootstrap.Modal.getInstance(document.getElementById('citiesModal')).hide();
+      new bootstrap.Modal(document.getElementById('cityModal')).show();
+    }
+
+    document.getElementById('citySubmitBtn').addEventListener('click', async function() {
+      const form = document.getElementById('cityForm');
+      const action = form.dataset.action;
+      const id = document.getElementById('cityId').value;
+      const nameAr = document.getElementById('cityNameAr').value;
+      const nameEn = document.getElementById('cityNameEn').value;
+      const governorateId = action === 'create' 
+        ? document.getElementById('cityGovernorateSelect').value
+        : document.getElementById('currentGovernorateId').value;
+
+      if (!nameAr.trim()) {
+        alert('اسم المدينة بالعربية مطلوب');
+        return;
+      }
+
+      if (!governorateId && action === 'create') {
+        alert('المحافظة مطلوبة');
+        return;
+      }
+
+      let url = '/countries/api/create-city';
+      let method = 'POST';
+
+      if (action === 'update' && id) {
+        url = `/countries/api/update-city/${id}`;
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nameAr: nameAr.trim(),
+            nameEn: nameEn.trim(),
+            governorateId: governorateId
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('تم الحفظ بنجاح');
+          bootstrap.Modal.getInstance(document.getElementById('cityModal')).hide();
+          
+          if (action === 'create') {
+            window.location.reload();
+          } else {
+            // Reload cities for current governorate
+            const currentGovId = document.getElementById('currentGovernorateId').value;
+            fetch(`/countries/api/cities/${currentGovId}`)
+              .then(r => r.json())
+              .then(res => {
+                if (res.success) {
+                  displayCities(res.cities);
+                  new bootstrap.Modal(document.getElementById('citiesModal')).show();
+                }
+              });
+          }
+        } else {
+          alert('خطأ: ' + data.error);
+        }
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+      }
+    });
+
+    // Reset form when modal is closed
+    document.getElementById('cityModal').addEventListener('hidden.bs.modal', function() {
+      document.getElementById('cityForm').reset();
+      document.getElementById('cityForm').dataset.action = 'create';
+      document.getElementById('cityId').value = '';
+      document.getElementById('cityModalTitle').textContent = 'إضافة مدينة';
+      document.getElementById('governorateSelector').style.display = 'block';
+    });

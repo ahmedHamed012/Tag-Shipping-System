@@ -1,0 +1,462 @@
+// ملف prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int     @id @default(autoincrement())
+  fullName       String
+  email          String  @unique
+  phone          String  @unique
+  address        String?
+  nationalId     String  @unique
+  idCardFront    String?
+  idCardBack     String?
+  profilePicture String?
+  password       String
+  role           String  @default("OPERATION")
+  isActive       Boolean @default(true)
+  isDeleted      Boolean @default(false)
+
+  // حقول التتبع (Tracking)
+  createdAt      DateTime @default(now())
+  createdBy      Int?
+  creator        User?    @relation("UserCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedAt      DateTime @updatedAt
+  lastModifiedBy Int?
+  lastModifier   User?    @relation("UserModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  logs Log[] @relation("UserLogs")
+
+  createdUsers  User[] @relation("UserCreatedBy")
+  modifiedUsers User[] @relation("UserModifiedBy")
+
+  // Merchant relations
+  createdMerchants Merchant[] @relation("MerchantCreatedBy")
+  updatedMerchants Merchant[] @relation("MerchantUpdatedBy")
+
+  // Receiver relations
+  createdReceivers Receiver[] @relation("ReceiverCreatedBy")
+  updatedReceivers Receiver[] @relation("ReceiverModifiedBy")
+
+  // Shipment relations
+  createdShipments Shipment[] @relation("ShipmentCreatedBy")
+  updatedShipments Shipment[] @relation("ShipmentModifiedBy")
+
+  // Governorate relations
+  createdGovernorates Governorate[] @relation("GovernorateCreatedBy")
+  updatedGovernorates Governorate[] @relation("GovernorateUpdatedBy")
+
+  // City relations
+  createdCities City[] @relation("CityCreatedBy")
+  updatedCities City[] @relation("CityUpdatedBy")
+
+  // Courier relations
+  createdCouriers Courier[] @relation("CourierCreatedBy")
+  updatedCouriers Courier[] @relation("CourierUpdatedBy")
+}
+
+model Log {
+  id       Int     @id @default(autoincrement())
+  action   String
+  entity   String
+  entityId Int
+  details  String? @db.NVarChar(Max)
+
+  userId Int
+  user   User @relation("UserLogs", fields: [userId], references: [id])
+
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model Merchant {
+  id String @id @default(uuid())
+
+  // Basic Information
+  name    String
+  phone   String @unique
+  address String
+
+  // Optional Information
+  commercialRegister  String?
+  taxCard             String?
+  maxShipmentWeight   Decimal? @db.Decimal(10, 2)
+  extraWeightFeePerKg Decimal? @db.Decimal(10, 2)
+
+  website       String?
+  facebookPage  String?
+  instagramPage String?
+
+  // Status
+  isActive  Boolean @default(true)
+  isDeleted Boolean @default(false)
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  attachments MerchantAttachment[]
+  priceList   MerchantPrice[]
+  shipments   Shipment[]
+
+  // User relations
+  creator User? @relation("MerchantCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updater User? @relation("MerchantUpdatedBy", fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("merchants")
+}
+
+model MerchantAttachment {
+  id String @id @default(uuid())
+
+  merchantId String
+
+  fileName String
+  fileUrl  String
+  mimeType String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("merchant_attachments")
+}
+
+model MerchantPrice {
+  id String @id @default(uuid())
+
+  merchantId String
+
+  governorate String
+  city        String
+
+  shipmentStatus String
+
+  price Decimal @db.Decimal(10, 2)
+
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+  @@index([governorate, city])
+  @@map("merchant_prices")
+}
+
+model Receiver {
+  id Int @id @default(autoincrement())
+
+  //////////////////////////////////////////////////////
+  // Basic Information
+  //////////////////////////////////////////////////////
+
+  fullName String
+
+  phone1 String
+  phone2 String?
+
+  address String
+
+  governorate String?
+  city        String?
+
+  notes String? @db.NVarChar(Max)
+
+  //////////////////////////////////////////////////////
+  // Status
+  //////////////////////////////////////////////////////
+
+  isActive  Boolean @default(true)
+  isDeleted Boolean @default(false)
+
+  //////////////////////////////////////////////////////
+  // Tracking
+  //////////////////////////////////////////////////////
+
+  createdAt DateTime @default(now())
+
+  createdBy Int?
+  creator   User? @relation("ReceiverCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  updatedAt DateTime @updatedAt
+
+  lastModifiedBy Int?
+  lastModifier   User? @relation("ReceiverModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  //////////////////////////////////////////////////////
+  // Relations
+  //////////////////////////////////////////////////////
+
+  shipments Shipment[]
+
+  @@index([phone1])
+  @@index([fullName])
+  @@map("receivers")
+}
+
+model Shipment {
+  id Int @id @default(autoincrement())
+
+  //////////////////////////////////////////////////////
+  // Relations
+  //////////////////////////////////////////////////////
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  receiverId Int
+  receiver   Receiver @relation(fields: [receiverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  courierId Int?
+  courier   Courier? @relation(fields: [courierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Parent shipment reference for partial/exchange shipments
+  parentShipmentId Int?
+  parentShipment   Shipment?  @relation("ChildShipments", fields: [parentShipmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childShipments   Shipment[] @relation("ChildShipments")
+
+  //////////////////////////////////////////////////////
+  // Shipment Information
+  //////////////////////////////////////////////////////
+
+  policyNumber String?
+
+  isOpenable Boolean @default(false)
+
+  isFastDelivery Boolean @default(false)
+
+  // Shipment status - Pickup Requested, Pickup Collected, Received at Warehouse, Out for Delivery, etc.
+  shipmentStatus String
+
+  // Shipment type - normal, partial_return, exchange
+  shipmentType String @default("normal") // normal | partial_return | exchange
+
+  //////////////////////////////////////////////////////
+  // Inventory
+  //////////////////////////////////////////////////////
+
+  inventoryId Int?
+
+  inventoryCourierId Int?
+
+  //////////////////////////////////////////////////////
+  // Financial
+  //////////////////////////////////////////////////////
+
+  totalAmount Decimal @db.Decimal(10, 2)
+
+  amountGained Decimal @db.Decimal(10, 2)
+
+  // Amount collected during delivery
+  deliveryCollectedAmount Decimal? @db.Decimal(10, 2)
+
+  //////////////////////////////////////////////////////
+  // Delivery Outcome Information
+  //////////////////////////////////////////////////////
+
+  returnReason String? @db.NVarChar(Max)
+
+  //////////////////////////////////////////////////////
+  // Notes
+  //////////////////////////////////////////////////////
+
+  additionalNotes String? @db.NVarChar(Max)
+
+  //////////////////////////////////////////////////////
+  // Status
+  //////////////////////////////////////////////////////
+
+  isActive Boolean @default(true)
+
+  isDeleted Boolean @default(false)
+
+  //////////////////////////////////////////////////////
+  // Tracking
+  //////////////////////////////////////////////////////
+
+  createdAt DateTime @default(now())
+
+  createdBy Int?
+  creator   User? @relation("ShipmentCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  updatedAt DateTime @updatedAt
+
+  lastModifiedBy Int?
+  lastModifier   User? @relation("ShipmentModifiedBy", fields: [lastModifiedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  //////////////////////////////////////////////////////
+  // Relations
+  //////////////////////////////////////////////////////
+
+  items ShipmentItem[]
+
+  @@index([merchantId])
+  @@index([receiverId])
+  @@index([shipmentStatus])
+  @@index([shipmentType])
+  @@index([parentShipmentId])
+  @@map("shipments")
+}
+
+model ShipmentItem {
+  id Int @id @default(autoincrement())
+
+  shipmentId Int
+
+  productName String
+
+  productDescription String? @db.NVarChar(Max)
+
+  netWeight Decimal? @db.Decimal(10, 2)
+
+  size String?
+
+  count Int
+
+  //////////////////////////////////////////////////////
+  // Status
+  //////////////////////////////////////////////////////
+
+  isActive Boolean @default(true)
+
+  isDeleted Boolean @default(false)
+
+  //////////////////////////////////////////////////////
+  // Tracking
+  //////////////////////////////////////////////////////
+
+  createdAt DateTime @default(now())
+
+  createdBy Int?
+
+  updatedAt DateTime @updatedAt
+
+  lastModifiedBy Int?
+
+  //////////////////////////////////////////////////////
+  // Relations
+  //////////////////////////////////////////////////////
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("shipment_items")
+}
+
+model Governorate {
+  id String @id @default(uuid())
+
+  // Basic Information
+  nameAr String
+  nameEn String?
+
+  // Status
+  isActive  Boolean @default(true)
+  isDeleted Boolean @default(false)
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  cities  City[]
+  creator User?  @relation("GovernorateCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updater User?  @relation("GovernorateUpdatedBy", fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([nameAr])
+  @@map("governorates")
+}
+
+model City {
+  id String @id @default(uuid())
+
+  // Basic Information
+  nameAr String
+  nameEn String?
+
+  // Foreign Key
+  governorateId String
+  governorate   Governorate @relation(fields: [governorateId], references: [id], onDelete: Cascade)
+
+  // Status
+  isActive  Boolean @default(true)
+  isDeleted Boolean @default(false)
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  creator User? @relation("CityCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updater User? @relation("CityUpdatedBy", fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([governorateId])
+  @@index([nameAr])
+  @@map("cities")
+}
+
+model Courier {
+  id Int @id @default(autoincrement())
+
+  // Basic Information
+  fullName String
+  email    String? @unique
+  phone    String  @unique
+  address  String?
+
+  // National ID
+  nationalId  String? @unique
+  idCardFront String?
+  idCardBack  String?
+
+  // Driving License
+  drivingLicense      String?
+  drivingLicenseFront String?
+  drivingLicenseBack  String?
+
+  // Courier Type - PICKUP or DELIVERY
+  courierType String @default("PICKUP") // PICKUP | DELIVERY
+
+  // Status
+  isActive  Boolean @default(true)
+  isDeleted Boolean @default(false)
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy Int?
+  updatedBy Int?
+
+  // Relations
+  shipments Shipment[]
+  creator   User?      @relation("CourierCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updater   User?      @relation("CourierUpdatedBy", fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([phone])
+  @@index([fullName])
+  @@index([courierType])
+  @@map("couriers")
+}

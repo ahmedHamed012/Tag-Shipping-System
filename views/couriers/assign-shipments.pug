@@ -1,0 +1,363 @@
+extends ../layouts/layout
+
+block content
+  .container-fluid.py-4
+    .row.mb-4
+      .col-md-8
+        h2
+          i.bi.bi-qr-code.me-2
+          | تعيين الشحنات للساعيين
+
+      .col-md-4.text-end
+        select#courierSelect.form-select
+          option(value="") اختر ساعي
+          
+    .card
+      .card-body
+        .alert.alert-info(role="alert")
+          i.bi.bi-info-circle.me-2
+          strong ملاحظة:
+          | امسح الباركود على الشحنة لتعيينها للساعي المختار. سيتم تغيير حالة الشحنة إلى "في الطريق" تلقائياً.
+
+        .row.mb-4
+          .col-md-6
+            label.form-label(for="barcodeInput")
+              | ماسح الباركود
+              span.text-danger *
+            input#barcodeInput.form-control.form-control-lg(
+              type="text"
+              placeholder="امسح باركود الشحنة هنا..."
+              autocomplete="off"
+              autofocus
+            )
+            small.form-text.text-muted سيتم التركيز التلقائي على هذا الحقل
+
+          .col-md-6
+            .card.bg-light
+              .card-body.text-center
+                #scanResult
+                  small.text-muted في انتظار المسح...
+
+    // Tabs for current and previous shipments
+    .card.mt-4
+      .card-header
+        ul.nav.nav-tabs.card-header-tabs(role="tablist")
+          li.nav-item(role="presentation")
+            button#currentTab.nav-link.active(
+              type="button"
+              role="tab"
+              aria-selected="true"
+              data-bs-toggle="tab"
+              data-bs-target="#currentShipments"
+            )
+              i.bi.bi-box-seam.me-2
+              | الشحنات الحالية
+              span.badge.bg-info.ms-2#currentCount 0
+
+          li.nav-item(role="presentation")
+            button#previousTab.nav-link(
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-bs-toggle="tab"
+              data-bs-target="#previousShipments"
+            )
+              i.bi.bi-check-circle.me-2
+              | الشحنات السابقة
+              span.badge.bg-success.ms-2#previousCount 0
+
+      .card-body
+        .tab-content
+          #currentShipments.tab-pane.fade.show.active(role="tabpanel")
+            .table-responsive
+              table.table.table-hover
+                thead.table-light
+                  tr
+                    th #
+                    th رقم السياسة
+                    th المستقبل
+                    th العنوان
+                    th الوزن
+                    th الحالة
+                    th الإجراءات
+
+                tbody#currentShipmentsList
+                  tr
+                    td(colspan="7").text-center.text-muted جاري التحميل...
+
+          #previousShipments.tab-pane.fade(role="tabpanel")
+            .table-responsive
+              table.table.table-hover
+                thead.table-light
+                  tr
+                    th #
+                    th رقم السياسة
+                    th المستقبل
+                    th العنوان
+                    th الوزن
+                    th الحالة
+                    th التاريخ
+
+                tbody#previousShipmentsList
+                  tr
+                    td(colspan="7").text-center.text-muted جاري التحميل...
+
+    .card.mt-4
+      .card-body
+        .row
+          .col-md-6
+            h5
+              i.bi.bi-file-earmark-pdf.me-2
+              | خيارات الطباعة
+
+          .col-md-6.text-end
+            button#generateDeliverySheet.btn.btn-primary(type="button" disabled)
+              i.bi.bi-printer.me-2
+              | طباعة الجدول التفصيلي
+
+  script.
+    let selectedCourierId = null;
+    let currentShipmentsTotal = 0;
+    let previousShipmentsTotal = 0;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load couriers dropdown
+      loadCouriersDropdown();
+
+      // Courier selection
+      document.getElementById('courierSelect').addEventListener('change', function() {
+        selectedCourierId = this.value;
+        document.getElementById('generateDeliverySheet').disabled = !selectedCourierId;
+        if (selectedCourierId) {
+          loadShipments();
+        }
+      });
+
+      // Barcode scanning
+      document.getElementById('barcodeInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const barcode = this.value.trim();
+          if (barcode) {
+            assignShipment(barcode);
+            this.value = '';
+          }
+        }
+      });
+
+      // Delivery sheet generation
+      document.getElementById('generateDeliverySheet').addEventListener('click', function() {
+        if (selectedCourierId) {
+          generateDeliverySheet();
+        }
+      });
+
+      // Tab switching
+      document.getElementById('currentTab').addEventListener('shown.bs.tab', function() {
+        if (selectedCourierId) {
+          loadCurrentShipments();
+        }
+      });
+
+      document.getElementById('previousTab').addEventListener('shown.bs.tab', function() {
+        if (selectedCourierId) {
+          loadPreviousShipments();
+        }
+      });
+    });
+
+    async function loadCouriersDropdown() {
+      try {
+        const response = await fetch('/couriers/api/dropdown');
+        const data = await response.json();
+
+        if (data.success) {
+          const select = document.getElementById('courierSelect');
+          select.innerHTML = '<option value="">اختر ساعي</option>';
+          data.data.forEach(courier => {
+            const option = document.createElement('option');
+            option.value = courier.id;
+            option.textContent = courier.fullName;
+            select.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading couriers:', error);
+      }
+    }
+
+    async function loadShipments() {
+      loadCurrentShipments();
+    }
+
+    async function loadCurrentShipments() {
+      if (!selectedCourierId) return;
+
+      try {
+        const response = await fetch(`/couriers/api/current-shipments/${selectedCourierId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          displayCurrentShipments(data.data.shipments || []);
+          currentShipmentsTotal = data.data?.pagination?.totalShipments || 0;
+          document.getElementById('currentCount').textContent = currentShipmentsTotal;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('currentShipmentsList').innerHTML = 
+          '<tr><td colspan="7" class="text-danger">خطأ في تحميل البيانات</td></tr>';
+      }
+    }
+
+    async function loadPreviousShipments() {
+      if (!selectedCourierId) return;
+
+      try {
+        const response = await fetch(`/couriers/api/previous-shipments/${selectedCourierId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          displayPreviousShipments(data.data.shipments || []);
+          previousShipmentsTotal = data.data?.pagination?.totalShipments || 0;
+          document.getElementById('previousCount').textContent = previousShipmentsTotal;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('previousShipmentsList').innerHTML = 
+          '<tr><td colspan="7" class="text-danger">خطأ في تحميل البيانات</td></tr>';
+      }
+    }
+
+    function displayCurrentShipments(shipments) {
+      const tbody = document.getElementById('currentShipmentsList');
+
+      if (shipments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">لا توجد شحنات حالية</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = shipments.map((shipment, index) => {
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong>${shipment.policyNumber || ('SH-' + shipment.id)}</strong></td>
+            <td>${shipment.receiver?.fullName || '-'}</td>
+            <td>${shipment.receiver?.address || '-'}</td>
+            <td>${shipment.amountGained || 0} كجم</td>
+            <td><span class="badge bg-warning">${shipment.shipmentStatus || '-'}</span></td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger" onclick="removeShipment('${shipment.id}')">
+                <i class="bi bi-x-circle"></i> إزالة
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function displayPreviousShipments(shipments) {
+      const tbody = document.getElementById('previousShipmentsList');
+
+      if (shipments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">لا توجد شحنات سابقة</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = shipments.map((shipment, index) => {
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong>${shipment.policyNumber || ('SH-' + shipment.id)}</strong></td>
+            <td>${shipment.receiver?.fullName || '-'}</td>
+            <td>${shipment.receiver?.address || '-'}</td>
+            <td>${shipment.amountGained || 0} كجم</td>
+            <td><span class="badge bg-success">${shipment.shipmentStatus || '-'}</span></td>
+            <td>
+              <small class="text-muted">${new Date(shipment.updatedAt || shipment.createdAt).toLocaleDateString('ar-SA')}</small>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function assignShipment(policyNumber) {
+      if (!selectedCourierId) {
+        showScanResult('اختر ساعي أولاً', 'danger');
+        return;
+      }
+
+      try {
+        const response = await fetch('/couriers/api/assign-shipment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            courierId: selectedCourierId,
+            policyNumber
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showScanResult(
+            `✓ تم تعيين الشحنة: ${data.shipmentNumber || policyNumber}`,
+            'success'
+          );
+          loadCurrentShipments();
+          loadPreviousShipments();
+        } else {
+          showScanResult(`✗ خطأ: ${data.error}`, 'danger');
+        }
+      } catch (error) {
+        showScanResult(`✗ خطأ: ${error.message}`, 'danger');
+      }
+
+      // Focus back on input
+      document.getElementById('barcodeInput').focus();
+    }
+
+    function showScanResult(message, type) {
+      const resultDiv = document.getElementById('scanResult');
+      resultDiv.innerHTML = `<div class="alert alert-${type} mb-0">${message}</div>`;
+
+      // Clear after 3 seconds
+      setTimeout(() => {
+        resultDiv.innerHTML = '<small class="text-muted">في انتظار المسح...</small>';
+      }, 3000);
+    }
+
+    async function removeShipment(shipmentId) {
+      if (confirm('هل تريد إزالة هذه الشحنة؟')) {
+        try {
+          const response = await fetch(`/shipments/api/unassign/${shipmentId}`, {
+            method: 'POST'
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert('تم الإزالة');
+            loadCurrentShipments();
+          } else {
+            alert('خطأ: ' + data.error);
+          }
+        } catch (error) {
+          alert('خطأ: ' + error.message);
+        }
+      }
+    }
+
+    async function generateDeliverySheet() {
+      if (!selectedCourierId) {
+        alert('اختر ساعي أولاً');
+        return;
+      }
+
+      try {
+        window.open(`/couriers/delivery-sheet/${selectedCourierId}`, '_blank');
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+      }
+    }

@@ -1,0 +1,308 @@
+extends ../layouts/layout
+
+block content
+  .container-fluid
+    .row.mb-4
+      .col-12
+        .d-flex.justify-content-between.align-items-center
+          div
+            h1.mb-2 إدارة التجار
+            p.text-muted
+              | عدد التجار:
+              strong.ms-1= totalMerchants
+          .d-flex.gap-2
+            a.btn.btn-primary(href="/merchants/create")
+              i.bi.bi-plus-circle.me-2
+              | إضافة تاجر جديد
+            button.btn.btn-success(type="button", onclick="downloadMerchantTemplate()")
+              i.bi.bi-download.me-2
+              | تحميل قالب Excel
+            button.btn.btn-info(type="button", data-bs-toggle="modal", data-bs-target="#uploadMerchantExcelModal")
+              i.bi.bi-upload.me-2
+              | رفع من Excel
+
+    .row.mb-3
+      .col-12
+        .card
+          .card-body.pb-0
+            form.row.g-3(method="GET", action="/merchants")
+              .col-md-6
+                input.form-control(type="text", name="search", placeholder="ابحث بالاسم أو الهاتف أو العنوان...", value=search)
+              .col-md-3
+                select.form-select(name="limit")
+                  option(value="10", selected=limit==10) 10 صفوف لكل صفحة
+                  option(value="20", selected=limit==20) 20 صفوف لكل صفحة
+                  option(value="50", selected=limit==50) 50 صفوف لكل صفحة
+              .col-md-3
+                button.btn.btn-outline-primary.w-100(type="submit")
+                  i.bi.bi-search.me-2
+                  | بحث
+
+    .row
+      .col-12
+        .card
+          .table-responsive
+            table.table.table-hover.mb-0
+              thead.table-light
+                tr
+                  th اسم التاجر
+                  th الهاتف
+                  th روابط التواصل
+                  th الحد الأقصى للحمولة
+                  th رسوم الكيلو الزائد
+                  th عدد بنود قائمة الأسعار
+                  th الحالة
+                  th الإجراءات
+              tbody
+                if merchants.length > 0
+                  each merchant in merchants
+                    tr
+                      - const websiteUrl = merchant.website ? (merchant.website.startsWith("http://") || merchant.website.startsWith("https://") ? merchant.website : `https://${merchant.website}`) : ""
+                      - const facebookUrl = merchant.facebookPage ? (merchant.facebookPage.startsWith("http://") || merchant.facebookPage.startsWith("https://") ? merchant.facebookPage : `https://${merchant.facebookPage}`) : ""
+                      - const instagramUrl = merchant.instagramPage ? (merchant.instagramPage.startsWith("http://") || merchant.instagramPage.startsWith("https://") ? merchant.instagramPage : `https://${merchant.instagramPage}`) : ""
+                      - const whatsappNumber = (merchant.phone || "").replace(/\D/g, "")
+                      td= merchant.name
+                      td= merchant.phone
+                      td
+                        .d-flex.gap-1
+                          if websiteUrl
+                            a.btn.btn-sm.btn-outline-secondary(href=websiteUrl, target="_blank", rel="noopener noreferrer", title="الموقع الإلكتروني")
+                              i.bi.bi-globe
+                          if facebookUrl
+                            a.btn.btn-sm.btn-outline-primary(href=facebookUrl, target="_blank", rel="noopener noreferrer", title="فيسبوك")
+                              i.bi.bi-facebook
+                          if instagramUrl
+                            a.btn.btn-sm.btn-outline-danger(href=instagramUrl, target="_blank", rel="noopener noreferrer", title="انستجرام")
+                              i.bi.bi-instagram
+                          if whatsappNumber
+                            a.btn.btn-sm.btn-outline-success(href=`https://wa.me/${whatsappNumber}`, target="_blank", rel="noopener noreferrer", title="واتساب")
+                              i.bi.bi-whatsapp
+                      td= merchant.maxShipmentWeight || "-"
+                      td= merchant.extraWeightFeePerKg || "-"
+                      td= merchant._count.priceList
+                      td
+                        if merchant.isActive
+                          span.badge.bg-success نشط
+                        else
+                          span.badge.bg-secondary معطل
+                      td
+                        .btn-group(role="group")
+                          button.btn.btn-sm.btn-outline-primary(onclick=`editMerchant('${merchant.id}')`)
+                            i.bi.bi-pencil
+                          button.btn.btn-sm.btn-outline-info(onclick=`openPriceListLookup('${merchant.id}')`, title="عرض وتحديث قائمة الأسعار")
+                            i.bi.bi-list-ul
+                          button.btn.btn-sm.btn-outline-warning(onclick=`toggleStatus('${merchant.id}')`)
+                            if merchant.isActive
+                              i.bi.bi-toggle-on
+                            else
+                              i.bi.bi-toggle-off
+                          button.btn.btn-sm.btn-outline-danger(onclick=`deleteMerchant('${merchant.id}')`)
+                            i.bi.bi-trash
+                else
+                  tr
+                    td.text-center.text-muted(colspan="8") لا توجد بيانات تجار
+
+          if totalPages > 1
+            .card-footer.bg-light
+              nav
+                ul.pagination.justify-content-center.mb-0
+                  li.page-item(class=currentPage===1 ? "disabled" : "")
+                    a.page-link(href=`/merchants?page=1&search=${search}&limit=${limit}`) الأولى
+                  li.page-item(class=currentPage===1 ? "disabled" : "")
+                    a.page-link(href=`/merchants?page=${currentPage-1}&search=${search}&limit=${limit}`) السابقة
+                  - for(let i = Math.max(1, currentPage-2); i <= Math.min(totalPages, currentPage+2); i++)
+                    li.page-item(class=i===currentPage ? "active" : "")
+                      a.page-link(href=`/merchants?page=${i}&search=${search}&limit=${limit}`)= i
+                  li.page-item(class=currentPage===totalPages ? "disabled" : "")
+                    a.page-link(href=`/merchants?page=${currentPage+1}&search=${search}&limit=${limit}`) التالية
+                  li.page-item(class=currentPage===totalPages ? "disabled" : "")
+                    a.page-link(href=`/merchants?page=${totalPages}&search=${search}&limit=${limit}`) الأخيرة
+
+    include ./_editModal
+    include ./_uploadExcelModal
+    .modal.fade(id="priceListLookupModal", tabindex="-1")
+      .modal-dialog.modal-lg
+        .modal-content
+          .modal-header
+            h5#priceListLookupTitle.modal-title قائمة أسعار التاجر
+            button.btn-close(type="button", data-bs-dismiss="modal")
+          .modal-body
+            .table-responsive
+              table.table.table-bordered.table-hover
+                thead.table-light
+                  tr
+                    th المحافظة
+                    th المدينة
+                    th حالة الشحنة
+                    th السعر
+                    th
+                tbody#lookupPriceListEditorBody
+                  tr
+                    td(colspan="5").text-center.text-muted لا توجد بيانات
+            .d-flex.justify-content-end.mt-2
+              button.btn.btn-sm.btn-outline-primary(type="button", onclick="addLookupPriceListRow()")
+                i.bi.bi-plus-lg.me-1
+                | إضافة صف
+          .modal-footer
+            button.btn.btn-secondary(type="button", data-bs-dismiss="modal") إغلاق
+            button.btn.btn-primary(type="button", onclick="saveLookupPriceList()") حفظ قائمة الأسعار
+
+  script.
+    let activeMerchantPriceListId = null;
+    async function editMerchant(id) {
+      try {
+        const response = await fetch(`/merchants/api/get/${id}`);
+        const data = await response.json();
+        if (!data.success) return alert(data.error);
+        const m = data.merchant;
+        document.getElementById("merchantId").value = m.id;
+        document.getElementById("merchantName").value = m.name || "";
+        document.getElementById("merchantPhone").value = m.phone || "";
+        document.getElementById("merchantAddress").value = m.address || "";
+        document.getElementById("merchantCommercialRegister").value = m.commercialRegister || "";
+        document.getElementById("merchantTaxCard").value = m.taxCard || "";
+        document.getElementById("merchantWebsite").value = m.website || "";
+        document.getElementById("merchantFacebookPage").value = m.facebookPage || "";
+        document.getElementById("merchantInstagramPage").value = m.instagramPage || "";
+        document.getElementById("merchantMaxShipmentWeight").value = m.maxShipmentWeight || "";
+        document.getElementById("merchantExtraWeightFeePerKg").value = m.extraWeightFeePerKg || "";
+        new bootstrap.Modal(document.getElementById("editMerchantModal")).show();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function saveMerchant() {
+      const id = document.getElementById("merchantId").value;
+      const formData = new FormData();
+      formData.append("name", document.getElementById("merchantName").value);
+      formData.append("phone", document.getElementById("merchantPhone").value);
+      formData.append("address", document.getElementById("merchantAddress").value);
+      formData.append("commercialRegister", document.getElementById("merchantCommercialRegister").value);
+      formData.append("taxCard", document.getElementById("merchantTaxCard").value);
+      formData.append("website", document.getElementById("merchantWebsite").value);
+      formData.append("facebookPage", document.getElementById("merchantFacebookPage").value);
+      formData.append("instagramPage", document.getElementById("merchantInstagramPage").value);
+      formData.append("maxShipmentWeight", document.getElementById("merchantMaxShipmentWeight").value);
+      formData.append("extraWeightFeePerKg", document.getElementById("merchantExtraWeightFeePerKg").value);
+
+      const attachments = document.getElementById("merchantAttachments").files;
+      for (const file of attachments) formData.append("attachments", file);
+
+      const response = await fetch(`/merchants/api/update/${id}`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!data.success) return alert(data.error || "حدث خطأ");
+      location.reload();
+    }
+
+    async function toggleStatus(id) {
+      if (!confirm("هل تريد تغيير حالة التاجر؟")) return;
+      const response = await fetch(`/merchants/api/toggle-status/${id}`, { method: "POST" });
+      const data = await response.json();
+      if (!data.success) return alert(data.error || "حدث خطأ");
+      location.reload();
+    }
+
+    async function deleteMerchant(id) {
+      if (!confirm("هل أنت متأكد من حذف التاجر؟")) return;
+      const response = await fetch(`/merchants/api/delete/${id}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!data.success) return alert(data.error || "حدث خطأ");
+      location.reload();
+    }
+
+    function downloadMerchantTemplate() {
+      window.location.href = "/merchants/api/download-template";
+    }
+
+    async function uploadMerchantsExcel() {
+      const fileInput = document.getElementById("merchantExcelFile");
+      if (!fileInput.files[0]) return alert("اختر ملف Excel أولاً");
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const response = await fetch("/merchants/api/bulk-upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!data.success) return alert(data.error || "فشل رفع الملف");
+      alert(data.message);
+      location.reload();
+    }
+
+    function addLookupPriceListRow(item = { governorate: "", city: "", shipmentStatus: "", price: "" }) {
+      const tbody = document.getElementById("lookupPriceListEditorBody");
+      if (!tbody) return;
+
+      if (tbody.querySelector(".empty-lookup-row")) {
+        tbody.innerHTML = "";
+      }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input class="form-control lookup-governorate" value="${item.governorate || ""}" placeholder="المحافظة"></td>
+        <td><input class="form-control lookup-city" value="${item.city || ""}" placeholder="المدينة"></td>
+        <td><input class="form-control lookup-status" value="${item.shipmentStatus || ""}" placeholder="حالة الشحنة"></td>
+        <td><input class="form-control lookup-price" type="number" min="0" step="0.01" value="${item.price || ""}" placeholder="السعر"></td>
+        <td><button class="btn btn-sm btn-outline-danger" type="button" onclick="this.closest('tr').remove(); normalizeLookupEmptyState();"><i class="bi bi-trash"></i></button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function normalizeLookupEmptyState() {
+      const tbody = document.getElementById("lookupPriceListEditorBody");
+      if (!tbody) return;
+      const hasRows = tbody.querySelectorAll("tr").length > 0;
+      if (!hasRows) {
+        tbody.innerHTML = '<tr class="empty-lookup-row"><td colspan="5" class="text-center text-muted">لا توجد بيانات</td></tr>';
+      }
+    }
+
+    async function openPriceListLookup(id) {
+      activeMerchantPriceListId = id;
+      const response = await fetch(`/merchants/api/get/${id}`);
+      const data = await response.json();
+      if (!data.success) return alert(data.error || "حدث خطأ");
+
+      const merchant = data.merchant;
+      document.getElementById("priceListLookupTitle").textContent = `قائمة أسعار التاجر: ${merchant.name}`;
+      const tbody = document.getElementById("lookupPriceListEditorBody");
+      tbody.innerHTML = "";
+
+      if (merchant.priceList && merchant.priceList.length > 0) {
+        merchant.priceList.forEach((row) => addLookupPriceListRow(row));
+      } else {
+        normalizeLookupEmptyState();
+      }
+
+      new bootstrap.Modal(document.getElementById("priceListLookupModal")).show();
+    }
+
+    async function saveLookupPriceList() {
+      if (!activeMerchantPriceListId) return;
+
+      const rows = Array.from(document.querySelectorAll("#lookupPriceListEditorBody tr"))
+        .map((row) => ({
+          governorate: row.querySelector(".lookup-governorate")?.value?.trim() || "",
+          city: row.querySelector(".lookup-city")?.value?.trim() || "",
+          shipmentStatus: row.querySelector(".lookup-status")?.value?.trim() || "",
+          price: row.querySelector(".lookup-price")?.value || "",
+        }))
+        .filter((row) => row.governorate || row.city || row.shipmentStatus || row.price);
+
+      const response = await fetch(`/merchants/api/update-pricelist/${activeMerchantPriceListId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceList: rows }),
+      });
+      const data = await response.json();
+      if (!data.success) return alert(data.error || "حدث خطأ");
+
+      alert(data.message);
+      location.reload();
+    }

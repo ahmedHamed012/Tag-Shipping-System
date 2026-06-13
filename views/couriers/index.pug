@@ -1,0 +1,382 @@
+extends ../layouts/layout
+
+block content
+  .container-fluid.py-4
+    .row.mb-4
+      .col
+        h2
+          i.bi.bi-person-badge.me-2
+          | إدارة المناديب
+
+      .col.text-end
+        button.btn.btn-primary.me-2(type="button" data-bs-toggle="modal" data-bs-target="#courierModal")
+          i.bi.bi-plus-circle.me-2
+          | إضافة مندوب
+        button.btn.btn-success.me-2(type="button" data-bs-toggle="modal" data-bs-target="#uploadModal")
+          i.bi.bi-cloud-upload.me-2
+          | رفع ملف
+        a.btn.btn-info(href="/couriers/api/download-template")
+          i.bi.bi-download.me-2
+          | تحميل النموذج
+
+    .card
+      .card-body
+        .row.mb-3
+          .col-md-6
+            .input-group
+              span.input-group-text
+                i.bi.bi-search
+              input#searchInput.form-control(
+                type="text"
+                placeholder="ابحث بالاسم أو الهاتف أو البريد..."
+              )
+
+          .col-md-6.text-end
+            select#pageLimit.form-select.d-inline-block(style="width: auto;")
+              option(value="10" selected) 10 صفوف
+              option(value="25") 25 صفوف
+              option(value="50") 50 صفوف
+
+        .table-responsive
+          table.table.table-hover
+            thead.table-light
+              tr
+                th #
+                th
+                  i.bi.bi-person.me-1
+                  | الاسم
+                th
+                  i.bi.bi-telephone.me-1
+                  | الهاتف
+                th
+                  i.bi.bi-box-seam.me-1
+                  | الشحنات
+                th
+                  i.bi.bi-toggle-on.me-1
+                  | الحالة
+                th
+                  i.bi.bi-calendar.me-1
+                  | التاريخ
+                th الإجراءات
+
+            tbody#couriersList
+              tr
+                td(colspan="8").text-center.text-muted
+                  small جاري التحميل...
+
+        .row.mt-3
+          .col-md-6
+            small#courierCount.text-muted
+
+          .col-md-6.text-end
+            nav(aria-label="pagination")
+              ul.pagination.pagination-sm.justify-content-end
+                li.page-item
+                  a.page-link(href="#" onclick="previousPage(); return false;")
+                    | السابق
+                li#pageNumbers
+                span.mx-2#currentPageInfo
+                li.page-item
+                  a.page-link(href="#" onclick="nextPage(); return false;")
+                    | التالي
+
+  // Include modals
+  include _courierModal
+  include _uploadModal
+  include _viewModal
+
+  script.
+    let currentPage = 1;
+    let pageLimit = 10;
+    let searchQuery = '';
+
+    // Load couriers on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      loadCouriers();
+
+      // Search functionality
+      document.getElementById('searchInput').addEventListener('keyup', function() {
+        searchQuery = this.value;
+        currentPage = 1;
+        loadCouriers();
+      });
+
+      // Page limit change
+      document.getElementById('pageLimit').addEventListener('change', function() {
+        pageLimit = parseInt(this.value);
+        currentPage = 1;
+        loadCouriers();
+      });
+    });
+
+    async function loadCouriers() {
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: pageLimit,
+        search: searchQuery
+      });
+
+      try {
+        const response = await fetch(`/couriers/api/list?${params}`, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          displayCouriers(data.data);
+          updatePagination(data.pagination);
+          document.getElementById('courierCount').textContent = 
+            `إجمالي: ${data.pagination.total} ساعي`;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('couriersList').innerHTML = 
+          '<tr><td colspan="8" class="text-danger">خطأ في تحميل البيانات</td></tr>';
+      }
+    }
+
+    function displayCouriers(couriers) {
+      const tbody = document.getElementById('couriersList');
+
+      if (couriers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">لا توجد ساعيين</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = couriers.map((courier, index) => {
+        const rowNum = (currentPage - 1) * pageLimit + index + 1;
+        const statusBadge = courier.isActive 
+          ? '<span class="badge bg-success">نشط</span>' 
+          : '<span class="badge bg-secondary">غير نشط</span>';
+
+        return `
+          <tr>
+            <td>${rowNum}</td>
+            <td><strong>${courier.fullName}</strong></td>
+            <td>${courier.phone}</td>
+            <td><span class="badge bg-info">${courier._count?.shipments || 0}</span></td>
+            <td>${statusBadge}</td>
+            <td>
+              <small class="text-muted">
+                ${new Date(courier.createdAt).toLocaleDateString('ar-SA')}
+              </small>
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-info" onclick="viewCourier('${courier.id}')" title="عرض">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-outline-warning" onclick="editCourier('${courier.id}')" title="تعديل">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-outline-secondary" onclick="toggleStatus('${courier.id}')" title="تغيير الحالة">
+                  <i class="bi bi-toggle-on"></i>
+                </button>
+                <button class="btn btn-outline-danger" onclick="deleteCourier('${courier.id}', '${courier.fullName}')" title="حذف">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updatePagination(pagination) {
+      const pageNumbers = document.getElementById('pageNumbers');
+      const currentPageInfo = document.getElementById('currentPageInfo');
+
+      let html = '';
+      const maxPages = Math.ceil(pagination.total / pageLimit);
+
+      for (let i = 1; i <= maxPages; i++) {
+        const active = i === currentPage ? ' active' : '';
+        html += `<li class="page-item${active}"><a class="page-link" href="#" onclick="goToPage(${i}); return false;">${i}</a></li>`;
+      }
+
+      pageNumbers.innerHTML = html;
+      currentPageInfo.textContent = `${currentPage} من ${maxPages}`;
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      loadCouriers();
+    }
+
+    function previousPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        loadCouriers();
+      }
+    }
+
+    function nextPage() {
+      const maxPages = Math.ceil((parseInt(document.getElementById('courierCount').textContent.match(/\d+/)[0]) || 0) / pageLimit);
+      if (currentPage < maxPages) {
+        currentPage++;
+        loadCouriers();
+      }
+    }
+
+    async function viewCourier(id) {
+      try {
+        const response = await fetch(`/couriers/api/get/${id}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const courier = data.data;
+
+          document.getElementById('viewCourierName').textContent = courier.fullName;
+          document.getElementById('viewCourierPhone').textContent = courier.phone;
+          document.getElementById('viewCourierEmail').textContent = courier.email || '-';
+          document.getElementById('viewCourierAddress').textContent = courier.address || '-';
+          document.getElementById('viewCourierNationalId').textContent = courier.nationalId || '-';
+          document.getElementById('viewCourierDrivingLicense').textContent = courier.drivingLicense || '-';
+
+          let documentsHtml = '<div class="row g-2">';
+          if (courier.idCardFront) {
+            documentsHtml += `
+              <div class="col-md-6">
+                <a href="${courier.idCardFront}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                  <i class="bi bi-file-image me-1"></i> بطاقة الهوية - أمام
+                </a>
+              </div>
+            `;
+          }
+          if (courier.idCardBack) {
+            documentsHtml += `
+              <div class="col-md-6">
+                <a href="${courier.idCardBack}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                  <i class="bi bi-file-image me-1"></i> بطاقة الهوية - خلف
+                </a>
+              </div>
+            `;
+          }
+          if (courier.drivingLicenseFront) {
+            documentsHtml += `
+              <div class="col-md-6">
+                <a href="${courier.drivingLicenseFront}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                  <i class="bi bi-file-image me-1"></i> رخصة القيادة - أمام
+                </a>
+              </div>
+            `;
+          }
+          if (courier.drivingLicenseBack) {
+            documentsHtml += `
+              <div class="col-md-6">
+                <a href="${courier.drivingLicenseBack}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                  <i class="bi bi-file-image me-1"></i> رخصة القيادة - خلف
+                </a>
+              </div>
+            `;
+          }
+
+          if (documentsHtml === '<div class="row g-2">') {
+            documentsHtml += '<small class="text-muted">لا توجد وثائق مرفوعة</small>';
+          }
+
+          documentsHtml += '</div>';
+          document.getElementById('viewCourierDocuments').innerHTML = documentsHtml;
+
+          // Load recent shipments
+          let shipmentsHtml = '<small class="text-muted">لا توجد شحنات</small>';
+          if (courier.shipments && courier.shipments.length > 0) {
+            shipmentsHtml = `
+              <table class="table table-sm table-borderless">
+                <thead>
+                  <tr>
+                    <th>رقم السياسة</th>
+                    <th>المستقبل</th>
+                    <th>الحالة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${courier.shipments.map(ship => `
+                    <tr>
+                      <td><small>${ship.policyNumber || ('SH-' + ship.id)}</small></td>
+                      <td><small>${ship.receiver?.fullName || '-'}</small></td>
+                      <td><small><span class="badge bg-info">${ship.shipmentStatus || '-'}</span></small></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `;
+          }
+          document.getElementById('viewCourierShipments').innerHTML = shipmentsHtml;
+
+          new bootstrap.Modal(document.getElementById('viewModal')).show();
+        }
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+      }
+    }
+
+    async function editCourier(id) {
+      try {
+        const response = await fetch(`/couriers/api/get/${id}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const courier = data.data;
+
+          document.getElementById('courierId').value = courier.id;
+          document.getElementById('fullName').value = courier.fullName;
+          document.getElementById('phone').value = courier.phone;
+          document.getElementById('email').value = courier.email || '';
+          document.getElementById('address').value = courier.address || '';
+          document.getElementById('nationalId').value = courier.nationalId || '';
+          document.getElementById('drivingLicense').value = courier.drivingLicense || '';
+
+          document.getElementById('courierForm').dataset.action = 'update';
+          document.getElementById('courierModalTitle').innerHTML = 
+            '<i class="bi bi-pencil me-2"></i>تعديل ساعي';
+
+          new bootstrap.Modal(document.getElementById('courierModal')).show();
+        }
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+      }
+    }
+
+    async function deleteCourier(id, name) {
+      if (confirm(`هل تريد حذف الساعي: ${name}؟`)) {
+        try {
+          const response = await fetch(`/couriers/api/delete/${id}`, {
+            method: 'DELETE'
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert(data.message);
+            loadCouriers();
+          } else {
+            alert('خطأ: ' + data.error);
+          }
+        } catch (error) {
+          alert('خطأ: ' + error.message);
+        }
+      }
+    }
+
+    async function toggleStatus(id) {
+      try {
+        const response = await fetch(`/couriers/api/toggle-status/${id}`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert(data.message);
+          loadCouriers();
+        } else {
+          alert('خطأ: ' + data.error);
+        }
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+      }
+    }

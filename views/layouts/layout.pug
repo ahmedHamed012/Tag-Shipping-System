@@ -1,0 +1,532 @@
+doctype html
+html(lang="ar" dir="rtl")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title لوحة التحكم - نظام الشحن
+    //- Bootstrap 5 RTL
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css")
+    //- Bootstrap Icons
+    link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css")
+    //- Google Fonts (Tajawal for Arabic)
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com", crossorigin)
+    link(rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap")
+    style.
+      :root {
+        --primary: #00b074;
+        --primary-dark: #085528;
+        --primary-light: rgba(0, 176, 116, 0.08);
+        --primary-border: rgba(0, 176, 116, 0.35);
+        --text-main: #464255;
+        --text-muted: #9896a4;
+        --sidebar-width: 260px;
+        --bg-body: #f5f7fa;
+        --sidebar-bg: #ffffff;
+        --navbar-bg: #ffffff;
+        --radius-md: 12px;
+        --radius-sm: 8px;
+        --shadow-card: 0 2px 16px rgba(0,0,0,0.07);
+        --font-main: 'Tajawal', sans-serif;
+      }
+
+      * {
+        font-family: var(--font-main);
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: var(--bg-body);
+        color: var(--text-main);
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      /* ─── APP SHELL ─── */
+      .app-shell {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      /* ─── SIDEBAR ─── */
+      .sidebar {
+        width: var(--sidebar-width);
+        min-width: var(--sidebar-width);
+        background: var(--sidebar-bg);
+        box-shadow: -2px 0 20px rgba(0,0,0,0.06);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 0 12px 20px;
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        z-index: 100;
+        overflow-y: auto;
+      }
+
+      .sidebar-logo {
+        padding: 20px 8px 18px;
+        border-bottom: 1px solid #f0f0f0;
+        text-align: center;
+      }
+
+      .sidebar-logo img {
+        height: 46px;
+        width: auto;
+      }
+
+      .sidebar-logo .app-name {
+        display: block;
+        font-weight: 900;
+        font-size: 1.1rem;
+        color: var(--primary);
+        margin-top: 6px;
+        letter-spacing: -0.3px;
+      }
+
+      /* Nav links */
+      .nav-links {
+        margin-top: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .nav-section-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        padding: 10px 14px 4px;
+        margin-top: 6px;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 14px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        text-decoration: none;
+        color: var(--text-main);
+        transition: background 0.22s ease, color 0.22s ease;
+        position: relative;
+        font-size: 0.88rem;
+        font-weight: 500;
+      }
+
+      .nav-item i,
+      .nav-item .nav-icon {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        transition: color 0.22s ease;
+        width: 20px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+
+      .nav-item .nav-label {
+        flex: 1;
+      }
+
+      .nav-item .nav-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 20px;
+        padding: 1px 7px;
+        min-width: 20px;
+        text-align: center;
+      }
+
+      .nav-item:hover,
+      .nav-item.active {
+        background: linear-gradient(270deg, #00b074 0%, #085528 100%);
+        color: #fff;
+      }
+
+      .nav-item:hover i,
+      .nav-item.active i,
+      .nav-item:hover .nav-icon,
+      .nav-item.active .nav-icon {
+        color: #fff;
+      }
+
+      .nav-item:hover .nav-badge,
+      .nav-item.active .nav-badge {
+        background: rgba(255,255,255,0.25);
+      }
+
+      /* Active indicator bar */
+      .nav-item.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 60%;
+        background: #fff;
+        border-radius: 2px;
+      }
+
+      /* Sidebar footer */
+      .sidebar-footer {
+        border-top: 1px solid #f0f0f0;
+        padding-top: 14px;
+        margin-top: 10px;
+      }
+
+      .sidebar-footer .nav-item {
+        color: #e05555;
+      }
+      .sidebar-footer .nav-item i {
+        color: #e05555;
+      }
+      .sidebar-footer .nav-item:hover {
+        background: #ffeaea;
+        color: #c0392b;
+      }
+      .sidebar-footer .nav-item:hover i {
+        color: #c0392b;
+      }
+
+      /* ─── MAIN AREA ─── */
+      .main-area {
+        margin-right: var(--sidebar-width);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      /* ─── NAVBAR ─── */
+      .top-navbar {
+        background: var(--navbar-bg);
+        padding: 14px 28px;
+        border-bottom: 1px solid #eef0f4;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 99;
+        box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+        gap: 20px;
+      }
+
+      /* Search */
+      .search-wrapper {
+        position: relative;
+        width: 42%;
+      }
+
+      .search-wrapper .search-icon {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1rem;
+        pointer-events: none;
+      }
+
+      .search-wrapper input {
+        width: 100%;
+        padding: 9px 40px 9px 16px;
+        border: 1.5px solid #eef0f4;
+        border-radius: 10px;
+        background: var(--bg-body);
+        font-family: var(--font-main);
+        font-size: 0.87rem;
+        color: var(--text-main);
+        transition: border-color 0.2s, box-shadow 0.2s;
+        outline: none;
+      }
+
+      .search-wrapper input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0,176,116,0.12);
+        background: #fff;
+      }
+
+      .search-wrapper input::placeholder {
+        color: var(--text-muted);
+      }
+
+      /* Navbar right actions */
+      .navbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .action-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        border: none;
+        transition: background 0.2s;
+      }
+
+      .action-btn.bell {
+        background: rgba(45,155,219,0.1);
+      }
+      .action-btn.bell i { color: #2d9bdb; font-size: 1.1rem; }
+      .action-btn.bell:hover { background: rgba(45,155,219,0.18); }
+
+      .action-btn.inbox {
+        background: rgba(49,174,101,0.1);
+      }
+      .action-btn.inbox i { color: #31ae65; font-size: 1.1rem; }
+      .action-btn.inbox:hover { background: rgba(49,174,101,0.18); }
+
+      .action-btn.settings {
+        background: rgba(255,91,91,0.1);
+      }
+      .action-btn.settings i { color: #ff5b5b; font-size: 1.1rem; }
+      .action-btn.settings:hover { background: rgba(255,91,91,0.18); }
+
+      .action-badge {
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #ff5b5b;
+        color: #fff;
+        font-size: 0.6rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #fff;
+        padding: 0 3px;
+      }
+
+      .action-badge.green { background: #31ae65; }
+
+      .navbar-divider {
+        width: 1px;
+        height: 30px;
+        background: #eef0f4;
+        margin: 0 4px;
+      }
+
+      /* User avatar area */
+      .user-avatar-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 14px 6px 10px;
+        background: var(--primary-light);
+        border: 1.5px dashed var(--primary-border);
+        border-radius: 50px;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+      }
+
+      .user-avatar-btn:hover {
+        background: rgba(0,176,116,0.14);
+        border-color: var(--primary);
+      }
+
+      .user-avatar-btn img {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--primary);
+      }
+
+      .user-info {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+      }
+
+      .user-info .user-name {
+        font-weight: 700;
+        font-size: 0.83rem;
+        color: var(--text-main);
+      }
+
+      .user-info .user-role {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-weight: 400;
+      }
+
+      .user-avatar-btn .chevron {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        margin-right: 2px;
+      }
+
+      /* ─── PAGE CONTENT ─── */
+      .page-content {
+        flex: 1;
+        padding: 28px;
+        overflow-y: auto;
+      }
+
+      /* Placeholder card for routed content */
+      .content-placeholder {
+        background: #fff;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-card);
+        padding: 40px;
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        color: var(--text-muted);
+      }
+
+      .content-placeholder i {
+        font-size: 3rem;
+        color: #d4d4d4;
+      }
+
+      .content-placeholder p {
+        font-size: 0.95rem;
+        margin: 0;
+      }
+
+      /* Scrollbar */
+      .sidebar::-webkit-scrollbar { width: 4px; }
+      .sidebar::-webkit-scrollbar-track { background: transparent; }
+      .sidebar::-webkit-scrollbar-thumb { background: #d4e8de; border-radius: 10px; }
+
+      /* Responsive toggle (mobile) */
+      @media (max-width: 768px) {
+        .sidebar { transform: translateX(100%); transition: transform 0.3s ease; }
+        .sidebar.open { transform: translateX(0); }
+        .main-area { margin-right: 0; }
+      }
+
+  body
+    .app-shell
+
+      //- ════════════════════════════════
+      //- SIDEBAR
+      //- ════════════════════════════════
+      aside.sidebar
+        //- Logo
+        .sidebar-logo
+          img(src="/imgs/logo.png" alt="شعار الشركة")
+          span.app-name نظام الشحن
+
+        //- Navigation
+        nav.nav-links
+
+          span.nav-section-label الرئيسية
+          a.nav-item.active(href="/dashboard")
+            i.bi.bi-house-door-fill
+            span.nav-label الرئيسية
+
+          span.nav-section-label إدارة المناديب
+          a.nav-item(href="/couriers")
+            i.bi.bi-truck
+            span.nav-label المناديب
+          a.nav-item.sub-nav-item(href="/couriers/assign-shipments")
+            i.bi.bi-qr-code.me-1
+            span.nav-label تحميل الشحنات على المناديب
+          a.nav-item.sub-nav-item(href="/couriers/settlement")
+            i.bi.bi-percent.me-1
+            span.nav-label تقفيل المناديب
+
+          span.nav-section-label الشحنات
+          a.nav-item(href="/shipments")
+            i.bi.bi-box-seam-fill
+            span.nav-label جميع الشحنات
+            span.nav-badge 12
+          a.nav-item(href="/returned-shipments")
+            i.bi.bi-arrow-return-right
+            span.nav-label الشحنات المرتجعة
+
+          span.nav-section-label الإدارة
+          a.nav-item(href="/merchants")
+            i.bi.bi-shop
+            span.nav-label التجار
+          a.nav-item(href="/countries")
+            i.bi.bi-building
+            span.nav-label المحافظات والمدن
+          a.nav-item(href="/users")
+            i.bi.bi-people-fill
+            span.nav-label المستخدمين
+
+        //- Footer (logout)
+        .sidebar-footer
+          a.nav-item(href="/auth/reset-password")
+            i.bi.bi-key
+            span.nav-label إعادة تعيين كلمة المرور
+          a.nav-item(href="/logout")
+            i.bi.bi-box-arrow-left
+            span.nav-label تسجيل الخروج
+
+      //- ════════════════════════════════
+      //- MAIN AREA
+      //- ════════════════════════════════
+      .main-area
+
+        //- ── TOP NAVBAR ──
+        header.top-navbar
+
+          //- Search
+          .search-wrapper
+            i.bi.bi-search.search-icon
+            input(type="text" placeholder="ابحث عن شحنة، تاجر، أو مندوب...")
+
+          //- Actions + User
+          .navbar-actions
+
+            button.action-btn.bell(title="الإشعارات")
+              i.bi.bi-bell-fill
+              span.action-badge 5
+            button.action-btn.inbox(title="الرسائل")
+              i.bi.bi-inbox-fill
+              span.action-badge.green 3
+            button.action-btn.settings(title="الإعدادات")
+              i.bi.bi-gear-fill
+
+            .navbar-divider
+
+            .user-avatar-btn
+              img(src="https://primefaces.org/cdn/primeng/images/demo/avatar/amyelsner.png" alt="صورة المستخدم")
+              .user-info
+                span.user-name
+                  | مرحباً،
+                  = " " + ((currentUser && currentUser.fullName) || "مستخدم")
+                span.user-role= (currentUser && currentUser.role) || "-"
+
+        //- ── PAGE CONTENT (routed views go here) ──
+        main.page-content
+          block content
+            .content-placeholder
+              i.bi.bi-layout-text-sidebar-reverse
+              p اختر صفحة من القائمة الجانبية
+
+    script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js")
+    script.
+      // Highlight active nav item based on current path
+      const currentPath = window.location.pathname;
+      document.querySelectorAll('.nav-item').forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+          document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
+          link.classList.add('active');
+        }
+      });

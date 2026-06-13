@@ -1,0 +1,90 @@
+doctype html
+html(lang="ar" dir="rtl")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title كشف تسليم - #{courier.fullName}
+    style.
+      body {
+        font-family: Tahoma, Arial, sans-serif;
+        margin: 24px;
+        color: #222;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+        margin-bottom: 16px;
+      }
+      .meta {
+        margin-bottom: 14px;
+        font-size: 14px;
+      }
+      .shipment {
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .divider {
+        border-top: 1px dashed #999;
+        margin: 12px 0;
+      }
+      .line {
+        margin: 4px 0;
+        font-size: 14px;
+      }
+      .empty {
+        text-align: center;
+        color: #777;
+        margin-top: 30px;
+      }
+      @media print {
+        .no-print { display: none; }
+        body { margin: 12px; }
+      }
+  body
+    .header
+      h2(style="margin:0") كشف تسليم يومي
+      button.no-print(type="button" onclick="window.print()") طباعة
+
+    .meta
+      .line
+        strong اسم الساعي:
+        |  #{courier.fullName}
+      .line
+        strong الهاتف:
+        |  #{courier.phone}
+      .line
+        strong التاريخ:
+        |  #{date}
+      .line
+        strong عدد الشحنات:
+        |  #{count}
+
+    if shipments && shipments.length > 0
+      each shipment, index in shipments
+        .shipment
+          .line
+            strong رقم الشحنة:
+            |  #{shipment.policyNumber || ('SH-' + shipment.id)}
+          .line
+            strong اسم المستلم:
+            |  #{shipment.receiver?.fullName || '-'}
+          .line
+            strong العنوان:
+            |  #{shipment.receiver?.address || '-'}
+          .line
+            strong الهاتف:
+            |  #{shipment.receiver?.phone1 || '-'}
+          .line
+            strong المبلغ:
+            |  #{shipment.totalAmount} ر.س
+          .line
+            strong الحالة:
+            |  #{shipment.shipmentStatus}
+          if index < shipments.length - 1
+            .divider
+    else
+      .empty لا توجد شحنات مسندة اليوم لهذا الساعي

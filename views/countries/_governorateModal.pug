@@ -1,0 +1,89 @@
+// Modal for adding/editing governorate
+#governorateModal.modal.fade(tabindex="-1")
+  .modal-dialog
+    .modal-content
+      .modal-header.bg-primary.text-white
+        h5#governorateModalTitle.modal-title
+          i.bi.bi-geo-alt-fill.me-2
+          | إضافة محافظة
+        button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal")
+
+      .modal-body
+        form#governorateForm(data-action="create")
+          input#governorateId(type="hidden" name="id")
+
+          .mb-3
+            label.form-label(for="governorateNameAr")
+              | اسم المحافظة (عربي)
+              span.text-danger *
+            input#governorateNameAr.form-control(
+              type="text"
+              name="nameAr"
+              placeholder="مثال: الرياض"
+              required
+            )
+
+          .mb-3
+            label.form-label(for="governorateNameEn")
+              | الاسم الإنجليزي
+            input#governorateNameEn.form-control(
+              type="text"
+              name="nameEn"
+              placeholder="مثال: Riyadh"
+            )
+
+      .modal-footer
+        button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
+          | إلغاء
+        button#governorateSubmitBtn.btn.btn-primary(type="button")
+          i.bi.bi-check-circle.me-2
+          | حفظ
+
+  script.
+    document.getElementById('governorateSubmitBtn').addEventListener('click', async function() {
+      const form = document.getElementById('governorateForm');
+      const action = form.dataset.action;
+      const id = document.getElementById('governorateId').value;
+      const nameAr = document.getElementById('governorateNameAr').value;
+      const nameEn = document.getElementById('governorateNameEn').value;
+
+      if (!nameAr.trim()) {
+        alert('اسم المحافظة بالعربية مطلوب');
+        return;
+      }
+
+      let url = '/countries/api/create-governorate';
+      let method = 'POST';
+
+      if (action === 'update' && id) {
+        url = `/countries/api/update-governorate/${id}`;
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nameAr: nameAr.trim(), nameEn: nameEn.trim() })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('تم الحفظ بنجاح');
+          bootstrap.Modal.getInstance(document.getElementById('governorateModal')).hide();
+          window.location.reload();
+        } else {
+          alert('خطأ: ' + data.error);
+        }
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+      }
+    });
+
+    // Reset form when modal is closed
+    document.getElementById('governorateModal').addEventListener('hidden.bs.modal', function() {
+      document.getElementById('governorateForm').reset();
+      document.getElementById('governorateForm').dataset.action = 'create';
+      document.getElementById('governorateId').value = '';
+      document.getElementById('governorateModalTitle').textContent = 'إضافة محافظة';
+    });

@@ -1,0 +1,176 @@
+// Modal for adding/editing courier
+#courierModal.modal.fade(tabindex="-1")
+  .modal-dialog.modal-lg
+    .modal-content
+      .modal-header.bg-primary.text-white
+        h5#courierModalTitle.modal-title
+          i.bi.bi-person-badge.me-2
+          | إضافة ساعي
+        button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal")
+
+      .modal-body
+        form#courierForm(data-action="create" enctype="multipart/form-data")
+          input#courierId(type="hidden" name="id")
+
+          .row.g-3
+            .col-md-6
+              label.form-label(for="fullName")
+                | الاسم الكامل
+                span.text-danger *
+              input#fullName.form-control(
+                type="text"
+                name="fullName"
+                placeholder="أدخل الاسم الكامل"
+                required
+              )
+
+            .col-md-6
+              label.form-label(for="phone")
+                | رقم الهاتف
+                span.text-danger *
+              input#phone.form-control(
+                type="tel"
+                name="phone"
+                placeholder="أدخل رقم الهاتف"
+                required
+              )
+
+          .row.g-3
+            .col-md-6
+              label.form-label(for="email")
+                | البريد الإلكتروني
+              input#email.form-control(
+                type="email"
+                name="email"
+                placeholder="أدخل البريد الإلكتروني"
+              )
+
+            .col-md-6
+              label.form-label(for="address")
+                | العنوان
+              input#address.form-control(
+                type="text"
+                name="address"
+                placeholder="أدخل العنوان"
+              )
+
+          .row.g-3
+            .col-md-6
+              label.form-label(for="nationalId")
+                | رقم الهوية الوطنية
+              input#nationalId.form-control(
+                type="text"
+                name="nationalId"
+                placeholder="أدخل رقم الهوية"
+              )
+
+            .col-md-6
+              label.form-label(for="drivingLicense")
+                | رقم رخصة القيادة
+              input#drivingLicense.form-control(
+                type="text"
+                name="drivingLicense"
+                placeholder="أدخل رقم رخصة القيادة"
+              )
+
+          // Documents Upload
+          .card.mt-3
+            .card-header.bg-light
+              h6.mb-0
+                i.bi.bi-file-image.me-2
+                | الوثائق (اختياري)
+
+            .card-body
+              .row.g-3
+                .col-md-6
+                  label.form-label صورة بطاقة الهوية - الأمام
+                  input.form-control(
+                    type="file"
+                    name="idCardFront"
+                    accept="image/*"
+                  )
+                  small.form-text.text-muted ملفات صور فقط
+
+                .col-md-6
+                  label.form-label صورة بطاقة الهوية - الخلف
+                  input.form-control(
+                    type="file"
+                    name="idCardBack"
+                    accept="image/*"
+                  )
+                  small.form-text.text-muted ملفات صور فقط
+
+              .row.g-3
+                .col-md-6
+                  label.form-label صورة رخصة القيادة - الأمام
+                  input.form-control(
+                    type="file"
+                    name="drivingLicenseFront"
+                    accept="image/*"
+                  )
+                  small.form-text.text-muted ملفات صور فقط
+
+                .col-md-6
+                  label.form-label صورة رخصة القيادة - الخلف
+                  input.form-control(
+                    type="file"
+                    name="drivingLicenseBack"
+                    accept="image/*"
+                  )
+                  small.form-text.text-muted ملفات صور فقط
+
+      .modal-footer
+        button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
+          | إلغاء
+        button#courierSubmitBtn.btn.btn-primary(type="button")
+          i.bi.bi-check-circle.me-2
+          | حفظ
+
+  script.
+    document.getElementById('courierSubmitBtn').addEventListener('click', async function() {
+      const form = document.getElementById('courierForm');
+      const action = form.dataset.action;
+      const courierId = document.getElementById('courierId').value;
+
+      const fullName = document.getElementById('fullName').value;
+      const phone = document.getElementById('phone').value;
+
+      if (!fullName.trim() || !phone.trim()) {
+        alert('الاسم الكامل ورقم الهاتف مطلوبان');
+        return;
+      }
+
+      let url = '/couriers/api/create';
+      if (action === 'update' && courierId) {
+        url = `/couriers/api/update/${courierId}`;
+      }
+
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert(data.message);
+          bootstrap.Modal.getInstance(document.getElementById('courierModal')).hide();
+          window.location.reload();
+        } else {
+          alert('خطأ: ' + data.error);
+        }
+      } catch (error) {
+        alert('خطأ: ' + error.message);
+      }
+    });
+
+    // Reset form when modal is closed
+    document.getElementById('courierModal').addEventListener('hidden.bs.modal', function() {
+      document.getElementById('courierForm').reset();
+      document.getElementById('courierForm').dataset.action = 'create';
+      document.getElementById('courierId').value = '';
+      document.getElementById('courierModalTitle').textContent = 'إضافة ساعي';
+    });
