@@ -329,6 +329,7 @@ block content
           document.getElementById('address').value = courier.address || '';
           document.getElementById('nationalId').value = courier.nationalId || '';
           document.getElementById('drivingLicense').value = courier.drivingLicense || '';
+          document.getElementById('deliveryFeePerShipment').value = courier.deliveryFeePerShipment != null ? parseFloat(courier.deliveryFeePerShipment).toFixed(2) : '';
 
           document.getElementById('courierForm').dataset.action = 'update';
           document.getElementById('courierModalTitle').innerHTML = 

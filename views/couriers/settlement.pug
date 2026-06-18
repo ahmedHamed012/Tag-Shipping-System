@@ -2,285 +2,430 @@ extends ../layouts/layout
 
 block content
   .container-fluid.py-4
+
+    // ── Header ──────────────────────────────────────────────────────────
     .row.mb-4
       .col-md-8
-        h2
+        h2.mb-0
           i.bi.bi-percent.me-2
-          | تسوية الساعيين
-
+          | تقفيل المناديب
       .col-md-4.text-end
-        button#printSettlement.btn.btn-primary(type="button")
+        button#printBtn.btn.btn-outline-secondary.me-2(type="button" style="display:none")
           i.bi.bi-printer.me-2
           | طباعة
+        button#saveBtn.btn.btn-success(type="button" style="display:none" disabled)
+          i.bi.bi-lock-fill.me-2
+          | حفظ التقفيل
 
-    .card
+    // ── Filters ─────────────────────────────────────────────────────────
+    .card.mb-4
       .card-body
-        .row.g-3.mb-4
+        .row.g-3.align-items-end
           .col-md-4
-            label.form-label(for="courierSelect")
-              | اختر الساعي
+            label.form-label اختر الساعي
               span.text-danger *
             select#courierSelect.form-select
-              option(value="") -- اختر --
-
+              option(value="") -- اختر الساعي --
           .col-md-3
-            label.form-label(for="startDate")
-              | من التاريخ
-            input#startDate.form-control(
-              type="date"
-            )
-
+            label.form-label من تاريخ
+            input#startDate.form-control(type="date")
           .col-md-3
-            label.form-label(for="endDate")
-              | إلى التاريخ
-            input#endDate.form-control(
-              type="date"
-            )
-
-          .col-md-2.d-flex.align-items-end
+            label.form-label إلى تاريخ
+            input#endDate.form-control(type="date")
+          .col-md-2
             button#filterBtn.btn.btn-primary.w-100(type="button")
               i.bi.bi-funnel.me-2
               | تطبيق
 
-    // Settlement Statistics
-    #settlementStats.d-none
+    // ── Stats cards ──────────────────────────────────────────────────────
+    #settlementStats(style="display:none")
       .row.g-3.mb-4
-        .col-md-3
-          .card.border-primary
-            .card-body
-              .d-flex.justify-content-between.align-items-center
-                div
-                  h6.card-title.text-muted إجمالي الشحنات
-                  h3#totalShipments 0
-                i.bi.bi-box-seam.text-primary(style="font-size: 2rem;")
+        .col-6.col-md
+          .card.text-center.border-0.shadow-sm
+            .card-body.py-3
+              .fs-2.fw-bold.text-dark#statTotal 0
+              .small.text-muted إجمالي الشحنات
+        .col-6.col-md
+          .card.text-center.border-0.shadow-sm
+            .card-body.py-3
+              .fs-2.fw-bold.text-success#statDelivered 0
+              .small.text-muted تم التوصيل
+        .col-6.col-md
+          .card.text-center.border-0.shadow-sm
+            .card-body.py-3
+              .fs-2.fw-bold.text-warning#statPartialEx 0
+              .small.text-muted جزئي / استبدال
+        .col-6.col-md
+          .card.text-center.border-0.shadow-sm
+            .card-body.py-3
+              .fs-2.fw-bold.text-danger#statReturned 0
+              .small.text-muted مرتجع
+        .col-6.col-md
+          .card.text-center.border-0.shadow-sm
+            .card-body.py-3
+              .fs-2.fw-bold.text-info#statStillOut 0
+              .small.text-muted قيد التوصيل
 
-        .col-md-3
-          .card.border-success
-            .card-body
-              .d-flex.justify-content-between.align-items-center
-                div
-                  h6.card-title.text-muted تم التسليم
-                  h3#deliveredCount 0
-                i.bi.bi-check-circle.text-success(style="font-size: 2rem;")
-
-        .col-md-3
-          .card.border-warning
-            .card-body
-              .d-flex.justify-content-between.align-items-center
-                div
-                  h6.card-title.text-muted في الطريق
-                  h3#outForDeliveryCount 0
-                i.bi.bi-truck.text-warning(style="font-size: 2rem;")
-
-        .col-md-3
-          .card.border-info
-            .card-body
-              .d-flex.justify-content-between.align-items-center
-                div
-                  h6.card-title.text-muted معلق
-                  h3#pendingCount 0
-                i.bi.bi-clock-history.text-info(style="font-size: 2rem;")
-
-    // Financial Summary
-    #financialSummary.d-none
-      .card.mb-4.bg-light
+    // ── Financial summary ────────────────────────────────────────────────
+    #financialSummary(style="display:none")
+      .card.mb-4.border-success
+        .card-header.bg-success.text-white
+          h6.mb-0
+            i.bi.bi-cash-stack.me-2
+            | الملخص المالي
         .card-body
-          .row
-            .col-md-4
-              div
-                h6.text-muted إجمالي المبلغ
-                h4#totalAmount.text-primary 0.00 ر.س
-            .col-md-4
-              div
-                h6.text-muted العمولة المستحقة
-                h4#commissionAmount.text-warning 0.00 ر.س
-            .col-md-4
-              div
-                h6.text-muted صافي المستحقات
-                h4#netAmount.text-success 0.00 ر.س
+          .row.g-3
+            .col-md-3
+              .p-3.bg-light.rounded.text-center
+                .small.text-muted.mb-1 إجمالي المحصل من العملاء
+                .fs-4.fw-bold.text-primary
+                  span#finCollected 0.00
+                  small.ms-1 ج.م
+            .col-md-3
+              .p-3.bg-light.rounded.text-center
+                .small.text-muted.mb-1
+                  | عمولة الساعي
+                  span.text-muted.ms-1 (
+                  span#feeLabel -
+                  span.text-muted ) ×
+                  span#settleableCount 0
+                  span.text-muted  شحنة
+                .fs-4.fw-bold.text-warning
+                  span#finEarnings 0.00
+                  small.ms-1 ج.م
+            .col-md-3
+              .p-3.bg-light.rounded.text-center
+                .small.text-muted.mb-1 صافي التسليم للشركة
+                .fs-4.fw-bold.text-success
+                  span#finHandover 0.00
+                  small.ms-1 ج.م
+            .col-md-3
+              .p-3.bg-light.rounded.text-center
+                #noFeeWarning(style="display:none")
+                  .alert.alert-warning.py-2.mb-0.small
+                    i.bi.bi-exclamation-triangle.me-1
+                    | لم يتم تحديد عمولة للساعي
+                #feeOk(style="display:none")
+                  .alert.alert-success.py-2.mb-0.small
+                    i.bi.bi-check-circle.me-1
+                    | جاهز للتقفيل
+                  .mt-2
+                    label.form-label.small.mb-1 ملاحظات (اختياري)
+                    textarea#settlementNotes.form-control.form-control-sm(rows="2" placeholder="ملاحظات حول هذا التقفيل...")
 
-    // Shipments by Status
-    #shipmentsByStatus.d-none
+    // ── Shipment tables ──────────────────────────────────────────────────
+    #shipmentTables(style="display:none")
       .row.g-4
+
         .col-lg-6
-          .card
-            .card-header.bg-success.text-white
+          .card.h-100
+            .card-header.bg-success.text-white.d-flex.justify-content-between.align-items-center
               h6.mb-0
                 i.bi.bi-check-circle.me-2
-                | الشحنات المسلمة
-                span.badge.bg-light.text-dark.float-end#deliveredBadge 0
-
-            .card-body
+                | تم التوصيل
+              span.badge.bg-white.text-success#badgeDelivered 0
+            .card-body.p-0
               .table-responsive
-                table.table.table-sm.table-borderless
-                  tbody#deliveredList
+                table.table.table-sm.mb-0
+                  thead.table-light
+                    tr
+                      th رقم الشحنة
+                      th العميل
+                      th المنطقة
+                      th.text-end محصل
+                  tbody#listDelivered
+                    tr
+                      td.text-center.text-muted.py-3(colspan="4") لا توجد شحنات
 
         .col-lg-6
-          .card
-            .card-header.bg-warning.text-dark
+          .card.h-100
+            .card-header.bg-warning.text-dark.d-flex.justify-content-between.align-items-center
               h6.mb-0
-                i.bi.bi-truck.me-2
-                | الشحنات في الطريق
-                span.badge.bg-light.text-dark.float-end#inTransitBadge 0
-
-            .card-body
+                i.bi.bi-arrow-left-right.me-2
+                | جزئي / استبدال
+              span.badge.bg-white.text-warning#badgePartialEx 0
+            .card-body.p-0
               .table-responsive
-                table.table.table-sm.table-borderless
-                  tbody#inTransitList
+                table.table.table-sm.mb-0
+                  thead.table-light
+                    tr
+                      th رقم الشحنة
+                      th العميل
+                      th الحالة
+                      th.text-end محصل
+                  tbody#listPartialEx
+                    tr
+                      td.text-center.text-muted.py-3(colspan="4") لا توجد شحنات
 
         .col-lg-6
-          .card
-            .card-header.bg-info.text-white
-              h6.mb-0
-                i.bi.bi-clock-history.me-2
-                | الشحنات المعلقة
-                span.badge.bg-light.text-dark.float-end#pendingBadge 0
-
-            .card-body
-              .table-responsive
-                table.table.table-sm.table-borderless
-                  tbody#pendingList
-
-        .col-lg-6
-          .card
-            .card-header.bg-danger.text-white
+          .card.h-100
+            .card-header.bg-danger.text-white.d-flex.justify-content-between.align-items-center
               h6.mb-0
                 i.bi.bi-x-circle.me-2
-                | الشحنات المرجوعة
-                span.badge.bg-light.text-dark.float-end#returnedBadge 0
-
-            .card-body
+                | مرتجع
+              span.badge.bg-white.text-danger#badgeReturned 0
+            .card-body.p-0
               .table-responsive
-                table.table.table-sm.table-borderless
-                  tbody#returnedList
+                table.table.table-sm.mb-0
+                  thead.table-light
+                    tr
+                      th رقم الشحنة
+                      th العميل
+                      th المنطقة
+                      th الحالة
+                  tbody#listReturned
+                    tr
+                      td.text-center.text-muted.py-3(colspan="4") لا توجد شحنات
+
+        .col-lg-6
+          .card.h-100
+            .card-header.bg-info.text-white.d-flex.justify-content-between.align-items-center
+              h6.mb-0
+                i.bi.bi-truck.me-2
+                | قيد التوصيل (لن تُقفَّل)
+              span.badge.bg-white.text-info#badgeStillOut 0
+            .card-body.p-0
+              .table-responsive
+                table.table.table-sm.mb-0
+                  thead.table-light
+                    tr
+                      th رقم الشحنة
+                      th العميل
+                      th المنطقة
+                      th.text-end إجمالي
+                  tbody#listStillOut
+                    tr
+                      td.text-center.text-muted.py-3(colspan="4") لا توجد شحنات
+
+    // ── Settlement History ───────────────────────────────────────────────
+    #settlementHistory(style="display:none")
+      hr.my-4
+      .d-flex.justify-content-between.align-items-center.mb-3
+        h5.mb-0
+          i.bi.bi-clock-history.me-2
+          | سجل التقفيلات السابقة
+      .table-responsive
+        table.table.table-sm.table-hover
+          thead.table-light
+            tr
+              th # التقفيل
+              th الفترة
+              th عدد الشحنات
+              th إجمالي محصل
+              th عمولة الساعي
+              th صافي للشركة
+              th تاريخ الحفظ
+          tbody#historyTableBody
 
   script.
-    let selectedCourierId = null;
+    let currentCourierId = null;
+    let currentData = null;
 
-    document.addEventListener('DOMContentLoaded', function() {
-      // Set default dates (today)
+    document.addEventListener('DOMContentLoaded', () => {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('startDate').value = today;
-      document.getElementById('endDate').value = today;
+      document.getElementById('endDate').value   = today;
 
-      // Load couriers
       loadCouriersDropdown();
 
-      // Event listeners
       document.getElementById('courierSelect').addEventListener('change', function() {
-        selectedCourierId = this.value;
-        if (selectedCourierId) {
+        currentCourierId = this.value || null;
+        if (currentCourierId) {
           loadSettlement();
+          loadHistory();
         } else {
-          document.getElementById('settlementStats').classList.add('d-none');
-          document.getElementById('financialSummary').classList.add('d-none');
-          document.getElementById('shipmentsByStatus').classList.add('d-none');
+          hideSections();
         }
       });
 
-      document.getElementById('filterBtn').addEventListener('click', function() {
-        if (selectedCourierId) {
-          loadSettlement();
-        } else {
-          alert('اختر ساعي أولاً');
-        }
+      document.getElementById('filterBtn').addEventListener('click', () => {
+        if (currentCourierId) loadSettlement();
+        else alert('اختر ساعياً أولاً');
       });
 
-      document.getElementById('printSettlement').addEventListener('click', function() {
-        window.print();
-      });
+      document.getElementById('saveBtn').addEventListener('click', saveSettlement);
+      document.getElementById('printBtn').addEventListener('click', () => window.print());
     });
 
-    async function loadCouriersDropdown() {
-      try {
-        const response = await fetch('/couriers/api/dropdown');
-        const data = await response.json();
+    // ── Data loaders ──────────────────────────────────────────────────────
 
-        if (data.success) {
-          const select = document.getElementById('courierSelect');
-          select.innerHTML = '<option value="">-- اختر --</option>';
-          data.data.forEach(courier => {
-            const option = document.createElement('option');
-            option.value = courier.id;
-            option.textContent = courier.fullName;
-            select.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      }
+    async function loadCouriersDropdown() {
+      const res  = await fetch('/couriers/api/dropdown');
+      const data = await res.json();
+      if (!data.success) return;
+      const select = document.getElementById('courierSelect');
+      select.innerHTML = '<option value="">-- اختر الساعي --</option>';
+      data.data.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.fullName;
+        select.appendChild(o);
+      });
     }
 
     async function loadSettlement() {
-      const startDate = document.getElementById('startDate').value;
-      const endDate = document.getElementById('endDate').value;
+      const start = document.getElementById('startDate').value;
+      const end   = document.getElementById('endDate').value;
+      const params = new URLSearchParams({ startDate: start, endDate: end });
 
-      try {
-        const params = new URLSearchParams({
-          startDate,
-          endDate
-        });
+      const res  = await fetch(`/couriers/api/settlement/${currentCourierId}?${params}`);
+      const data = await res.json();
+      if (!data.success) { alert('خطأ: ' + data.error); return; }
 
-        const response = await fetch(`/couriers/api/settlement/${selectedCourierId}?${params}`);
-        const data = await response.json();
+      currentData = data.data;
+      renderSettlement(data.data);
+    }
 
-        if (data.success) {
-          displaySettlement(data.data);
-        } else {
-          alert('خطأ: ' + data.error);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('خطأ في تحميل البيانات');
+    async function loadHistory() {
+      const res  = await fetch(`/couriers/api/settlement/${currentCourierId}/history`);
+      const data = await res.json();
+      if (!data.success) return;
+      renderHistory(data.settlements);
+    }
+
+    async function saveSettlement() {
+      if (!currentCourierId || !currentData) return;
+      if (!confirm('هل تريد حفظ وقفل هذا التقفيل؟ لن يمكن التراجع عنه.')) return;
+
+      const notes = document.getElementById('settlementNotes').value;
+      const start = document.getElementById('startDate').value;
+      const end   = document.getElementById('endDate').value;
+
+      const res  = await fetch(`/couriers/api/settlement/${currentCourierId}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: start, endDate: end, notes }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast('success', data.message);
+        loadSettlement();
+        loadHistory();
+      } else {
+        showToast('error', data.error);
       }
     }
 
-    function displaySettlement(data) {
-      // Show sections
-      document.getElementById('settlementStats').classList.remove('d-none');
-      document.getElementById('financialSummary').classList.remove('d-none');
-      document.getElementById('shipmentsByStatus').classList.remove('d-none');
+    // ── Renderers ─────────────────────────────────────────────────────────
 
-      // Update stats
-      document.getElementById('totalShipments').textContent = data.stats.totalShipments;
-      document.getElementById('deliveredCount').textContent = data.stats.delivered;
-      document.getElementById('outForDeliveryCount').textContent = data.stats.outForDelivery;
-      document.getElementById('pendingCount').textContent = data.stats.pending;
+    function renderSettlement(d) {
+      show('settlementStats');
+      show('financialSummary');
+      show('shipmentTables');
+      show('printBtn');
 
-      // Update financial summary
-      document.getElementById('totalAmount').textContent = (data.stats.totalAmount || 0).toFixed(2) + ' ر.س';
-      document.getElementById('commissionAmount').textContent = (data.stats.commissionAmount || 0).toFixed(2) + ' ر.س';
-      document.getElementById('netAmount').textContent = (data.stats.netAmount || 0).toFixed(2) + ' ر.س';
+      // Stats
+      document.getElementById('statTotal').textContent     = d.stats.total;
+      document.getElementById('statDelivered').textContent = d.stats.delivered;
+      document.getElementById('statPartialEx').textContent = d.stats.partialEx;
+      document.getElementById('statReturned').textContent  = d.stats.returned;
+      document.getElementById('statStillOut').textContent  = d.stats.stillOut;
 
-      // Update shipments by status
-      displayShipmentsList('deliveredList', data.shipments.delivered, 'deliveredBadge');
-      displayShipmentsList('inTransitList', data.shipments.outForDelivery, 'inTransitBadge');
-      displayShipmentsList('pendingList', data.shipments.pending, 'pendingBadge');
-      displayShipmentsList('returnedList', data.shipments.returned, 'returnedBadge');
+      // Financial
+      const f = d.financial;
+      document.getElementById('finCollected').textContent  = f.totalCollected.toFixed(2);
+      document.getElementById('finEarnings').textContent   = f.courierEarnings.toFixed(2);
+      document.getElementById('finHandover').textContent   = f.netHandover.toFixed(2);
+      document.getElementById('feeLabel').textContent      = f.feePerShipment.toFixed(2) + ' ج.م';
+      document.getElementById('settleableCount').textContent = d.stats.settleable;
+
+      const hasFee = f.feePerShipment > 0;
+      document.getElementById('noFeeWarning').style.display = hasFee ? 'none' : '';
+      document.getElementById('feeOk').style.display        = hasFee ? '' : 'none';
+
+      const canSave = d.stats.settleable > 0;
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.style.display = '';
+      saveBtn.disabled = !canSave;
+
+      // Tables
+      renderTable('listDelivered',  'badgeDelivered',  d.groups.delivered,  rowDelivered);
+      renderTable('listPartialEx',  'badgePartialEx',  d.groups.partialEx,  rowPartialEx);
+      renderTable('listReturned',   'badgeReturned',   d.groups.returned,   rowReturned);
+      renderTable('listStillOut',   'badgeStillOut',   d.groups.stillOut,   rowStillOut);
     }
 
-    function displayShipmentsList(elementId, shipments, badgeId) {
-      const tbody = document.getElementById(elementId);
-      const badge = document.getElementById(badgeId);
+    function renderTable(tbodyId, badgeId, items, rowFn) {
+      const cols = { listDelivered:4, listPartialEx:4, listReturned:4, listStillOut:4 };
+      document.getElementById(badgeId).textContent = items.length;
+      const tbody = document.getElementById(tbodyId);
+      tbody.innerHTML = items.length
+        ? items.map(rowFn).join('')
+        : `<tr><td class="text-center text-muted py-3" colspan="${cols[tbodyId]}">لا توجد شحنات</td></tr>`;
+    }
 
-      badge.textContent = shipments.length;
+    const pn = s => s.policyNumber || ('SH-' + s.id);
+    const loc = s => [s.receiver?.governorate, s.receiver?.city].filter(Boolean).join(' - ') || '-';
+    const amt = v => parseFloat(v || 0).toFixed(2);
 
-      if (shipments.length === 0) {
-        tbody.innerHTML = '<tr><td class="text-muted text-center py-3"><small>لا توجد شحنات</small></td></tr>';
-        return;
-      }
+    function rowDelivered(s) {
+      return `<tr>
+        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${s.receiver?.fullName || '-'}<br><small class="text-muted">${s.receiver?.phone1 || ''}</small></td>
+        <td><small>${loc(s)}</small></td>
+        <td class="text-end fw-bold text-success">${amt(s.deliveryCollectedAmount)} ج.م</td>
+      </tr>`;
+    }
 
-      tbody.innerHTML = shipments.map(ship => `
+    function rowPartialEx(s) {
+      return `<tr>
+        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${s.receiver?.fullName || '-'}</td>
+        <td><span class="badge bg-secondary">${s.shipmentStatus}</span></td>
+        <td class="text-end fw-bold text-warning">${amt(s.deliveryCollectedAmount)} ج.م</td>
+      </tr>`;
+    }
+
+    function rowReturned(s) {
+      return `<tr>
+        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${s.receiver?.fullName || '-'}</td>
+        <td><small>${loc(s)}</small></td>
+        <td><span class="badge bg-danger">${s.shipmentStatus}</span></td>
+      </tr>`;
+    }
+
+    function rowStillOut(s) {
+      return `<tr>
+        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${s.receiver?.fullName || '-'}</td>
+        <td><small>${loc(s)}</small></td>
+        <td class="text-end">${amt(s.totalAmount)} ج.م</td>
+      </tr>`;
+    }
+
+    function renderHistory(settlements) {
+      const section = document.getElementById('settlementHistory');
+      const tbody   = document.getElementById('historyTableBody');
+      if (!settlements.length) { section.style.display = 'none'; return; }
+
+      show('settlementHistory');
+      tbody.innerHTML = settlements.map(s => `
         <tr>
-          <td>
-            <div>
-              <small class="d-block"><strong>${ship.policyNumber || ('SH-' + ship.id)}</strong></small>
-              <small class="text-muted d-block">${ship.receiver?.fullName || '-'}</small>
-            </div>
-          </td>
-          <td class="text-end">
-            <small>${ship.amountGained || 0} كجم</small>
-          </td>
-        </tr>
-      `).join('');
+          <td><span class="badge bg-secondary">#${s.id}</span></td>
+          <td><small>${fmt(s.periodFrom)} → ${fmt(s.periodTo)}</small></td>
+          <td class="text-center">${s.shipmentCount}</td>
+          <td class="text-end">${parseFloat(s.totalCollected).toFixed(2)} ج.م</td>
+          <td class="text-end">${parseFloat(s.courierEarnings).toFixed(2)} ج.م</td>
+          <td class="text-end fw-bold text-success">${parseFloat(s.netHandover).toFixed(2)} ج.م</td>
+          <td><small>${fmt(s.createdAt)}</small></td>
+        </tr>`).join('');
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    function fmt(d) { return new Date(d).toLocaleDateString('ar-EG'); }
+    function show(id) { document.getElementById(id).style.display = ''; }
+    function hideSections() {
+      ['settlementStats','financialSummary','shipmentTables','settlementHistory','printBtn','saveBtn']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    }
+
+    function showToast(type, msg) {
+      const d = document.createElement('div');
+      d.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+      d.style.zIndex = 9999;
+      d.innerHTML = `${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+      document.body.appendChild(d);
+      setTimeout(() => d.remove(), 5000);
     }

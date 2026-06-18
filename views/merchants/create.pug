@@ -238,7 +238,7 @@ block content
       });
       const data = await response.json();
       if (!data.success) return alert(data.error || "حدث خطأ أثناء الحفظ");
-      alert(data.message);
+      alert(`${data.message}\n\nالمعرّف الخاص بالتاجر: ${data.merchant.identifier}`);
       window.location.href = "/merchants";
     }
 

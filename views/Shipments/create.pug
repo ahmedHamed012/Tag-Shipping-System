@@ -125,14 +125,16 @@ block content
                   hr
 
                   .mb-3
-                    label.form-label.fw-bold الوزن الإجمالي (كيلو) *
-                    input.form-control#amountGained(
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      onchange="calculateQuote()"
-                      required
-                    )
+                    label.form-label.fw-bold الوزن الإجمالي (كيلو)
+                    .input-group
+                      input.form-control.bg-light#amountGained(
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        readonly
+                        style="cursor:default"
+                      )
+                      span.input-group-text.text-muted(style="font-size:0.8rem") محسوب من المنتجات
 
               // Products Section (moved into main form)
               .card.mb-3
@@ -158,52 +160,83 @@ block content
                   placeholder="ملاحظات حول الشحنة..."
                 )
 
-        // Right Column: Price Calculation
+        // Right Column: Price Calculation (sticky)
         .col-lg-4
-          .card.mb-4.border-success
-            .card-header.bg-success.text-white
-              h5.mb-0
-                i.fas.fa-calculator.me-2
-                span حساب التسعيرة
+          div(style="position:sticky; top:20px")
+            .card.mb-4.border-success
+              .card-header.bg-success.text-white
+                h5.mb-0
+                  i.fas.fa-calculator.me-2
+                  span حساب التسعيرة
 
-            .card-body
-              // Price Breakdown
-              .bg-light.p-3.rounded.mb-3
-                .row.mb-2
-                  .col-7
-                    small.text-muted إجمالي المنتجات:
-                  .col-5.text-end
-                    span#productsTotal.fw-bold 0.00
+              .card-body
+                // Price Breakdown
+                .bg-light.p-3.rounded.mb-3
+                  .row.mb-2
+                    .col-7
+                      small.text-muted إجمالي المنتجات:
+                    .col-5.text-end
+                      span#productsTotal.fw-bold 0.00
 
-                .row.mb-2
-                  .col-7
-                    small.text-muted تكلفة الشحن:
-                  .col-5.text-end
-                    span#basePrice.fw-bold 0.00
+                  .row.mb-2
+                    .col-7
+                      small.text-muted تكلفة الشحن:
+                    .col-5.text-end
+                      span#basePrice.fw-bold 0.00
 
-                .row.mb-2#fastDeliveryRow(style="display: none;")
-                  .col-7
-                    small.text-muted توصيل سريع (1.5x):
-                  .col-5.text-end
-                    span#fastDeliveryPrice.text-warning.fw-bold 0.00
+                  .row.mb-2#fastDeliveryRow(style="display: none;")
+                    .col-7
+                      small.text-muted توصيل سريع (1.5x):
+                    .col-5.text-end
+                      span#fastDeliveryPrice.text-warning.fw-bold 0.00
 
-                .row.mb-2#extraWeightRow(style="display: none;")
-                  .col-7
-                    small.text-muted رسوم الوزن الزائد:
-                  .col-5.text-end
-                    span#extraWeightPrice.text-danger.fw-bold 0.00
+                  .row.mb-2#extraWeightRow(style="display: none;")
+                    .col-7
+                      small.text-muted رسوم الوزن الزائد:
+                    .col-5.text-end
+                      span#extraWeightPrice.text-danger.fw-bold 0.00
 
-                .row.pt-2.border-top
-                  .col-7
-                    strong السعر النهائي:
-                  .col-5.text-end
-                    strong.text-success(style="font-size: 1.1em;")
-                      span#finalPrice 0.00
-                      span.ms-1 ج.م
+                  .row.pt-2.border-top.align-items-center
+                    .col-7
+                      strong السعر النهائي:
+                    .col-5.text-end
+                      // Display mode
+                      #finalPriceDisplay
+                        strong.text-success(style="font-size: 1.1em;")
+                          span#finalPrice 0.00
+                          span.ms-1 ج.م
+                        button.btn.btn-link.btn-sm.p-0.ms-1.text-secondary(
+                          type="button"
+                          title="تعديل يدوي"
+                          onclick="openFinalPriceEdit()"
+                          style="vertical-align:baseline"
+                        )
+                          i.bi.bi-pencil-fill(style="font-size:0.7rem")
+                      // Edit mode (hidden by default)
+                      #finalPriceEdit(style="display:none")
+                        .input-group.input-group-sm
+                          input#finalPriceInput.form-control(
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            style="max-width:90px"
+                          )
+                          span.input-group-text ج.م
+                        .d-flex.gap-1.mt-1.justify-content-end
+                          button.btn.btn-success.btn-sm.px-2(type="button" onclick="confirmFinalPriceEdit()" title="تأكيد")
+                            i.bi.bi-check-lg
+                          button.btn.btn-outline-secondary.btn-sm.px-2(type="button" onclick="cancelFinalPriceEdit()" title="إلغاء")
+                            i.bi.bi-x-lg
 
-              .alert.alert-info.small
-                i.fas.fa-info-circle.me-2
-                span الحالة: <strong>طلب بيك اب</strong> (يتم تعيينها تلقائياً)
+                  #manualOverrideBadge.mt-2(style="display:none")
+                    span.badge.bg-warning.text-dark.w-100
+                      i.bi.bi-exclamation-triangle.me-1
+                      | تم تعديل السعر يدوياً
+
+                .alert.alert-info.small
+                  i.fas.fa-info-circle.me-2
+                  span الحالة: <strong>طلب بيك اب</strong> (يتم تعيينها تلقائياً)
 
     // Submit Section
     .row.mt-4
@@ -225,6 +258,7 @@ block content
   script.
     let selectedReceiver = null;
     let itemCounter = 0;
+    let manualTotalOverride = null; // null = use calculated, number = user-set value
 
     // Constants for shipment statuses
     const INITIAL_STATUS = "طلب بيك اب";
@@ -411,7 +445,44 @@ block content
         document.getElementById('extraWeightRow').style.display = 'none';
       }
 
-      document.getElementById('finalPrice').textContent = (data.shipmentTotal || 0).toFixed(2);
+      const calcTotal = data.shipmentTotal || 0;
+      document.getElementById('finalPrice').textContent = calcTotal.toFixed(2);
+      // Clear any manual override when the calculated price changes
+      if (manualTotalOverride !== null) {
+        manualTotalOverride = null;
+        cancelFinalPriceEdit();
+        document.getElementById('manualOverrideBadge').style.display = 'none';
+      }
+    }
+
+    function openFinalPriceEdit() {
+      const current = manualTotalOverride !== null
+        ? manualTotalOverride
+        : parseFloat(document.getElementById('finalPrice').textContent) || 0;
+      document.getElementById('finalPriceInput').value = current.toFixed(2);
+      document.getElementById('finalPriceDisplay').style.display = 'none';
+      document.getElementById('finalPriceEdit').style.display = '';
+      document.getElementById('finalPriceInput').focus();
+      document.getElementById('finalPriceInput').select();
+    }
+
+    function confirmFinalPriceEdit() {
+      const val = parseFloat(document.getElementById('finalPriceInput').value);
+      if (isNaN(val) || val < 0) {
+        document.getElementById('finalPriceInput').classList.add('is-invalid');
+        return;
+      }
+      document.getElementById('finalPriceInput').classList.remove('is-invalid');
+      manualTotalOverride = val;
+      document.getElementById('finalPrice').textContent = val.toFixed(2);
+      document.getElementById('finalPriceDisplay').style.display = '';
+      document.getElementById('finalPriceEdit').style.display = 'none';
+      document.getElementById('manualOverrideBadge').style.display = '';
+    }
+
+    function cancelFinalPriceEdit() {
+      document.getElementById('finalPriceDisplay').style.display = '';
+      document.getElementById('finalPriceEdit').style.display = 'none';
     }
 
     function resetPriceDisplay() {
@@ -448,7 +519,7 @@ block content
                 <input class="form-control form-control-sm" type="text" placeholder="الوصف" data-item="${itemCounter}" data-field="productDescription">
               </div>
               <div class="col-md-3">
-                <input class="form-control form-control-sm" type="number" step="0.01" placeholder="الوزن" data-item="${itemCounter}" data-field="netWeight">
+                <input class="form-control form-control-sm" type="number" step="0.01" placeholder="الوزن" data-item="${itemCounter}" data-field="netWeight" oninput="recalcTotalWeight()">
               </div>
               <div class="col-md-3">
                 <input class="form-control form-control-sm" type="text" placeholder="الحجم" data-item="${itemCounter}" data-field="size">
@@ -457,7 +528,7 @@ block content
 
             <div class="row g-2 mt-2">
               <div class="col-md-6">
-                <input class="form-control form-control-sm" type="number" min="1" placeholder="الكمية" data-item="${itemCounter}" data-field="count" oninput="calculateQuote()">
+                <input class="form-control form-control-sm" type="number" min="1" placeholder="الكمية" data-item="${itemCounter}" data-field="count" oninput="recalcTotalWeight(); calculateQuote()">
               </div>
               <div class="col-md-6">
                 <input class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="السعر" data-item="${itemCounter}" data-field="price" oninput="calculateQuote()">
@@ -471,7 +542,18 @@ block content
 
     function removeItem(itemId) {
       document.getElementById(`item-${itemId}`).remove();
+      recalcTotalWeight();
       calculateQuote();
+    }
+
+    function recalcTotalWeight() {
+      let total = 0;
+      document.querySelectorAll('.item-row').forEach(row => {
+        const weight = parseFloat(row.querySelector('[data-field="netWeight"]')?.value) || 0;
+        const count = parseInt(row.querySelector('[data-field="count"]')?.value) || 1;
+        total += weight * count;
+      });
+      document.getElementById('amountGained').value = total > 0 ? total.toFixed(2) : '';
     }
 
     function getItemsData() {
@@ -525,17 +607,14 @@ block content
         return;
       }
 
-      // Validate amount
-      const amountGained = parseFloat(document.getElementById('amountGained').value);
-      if (!amountGained || amountGained <= 0) {
-        alert('أدخل الوزن الإجمالي');
-        return;
-      }
+      const amountGained = parseFloat(document.getElementById('amountGained').value) || 0;
 
-      // Get total amount (from displayed price)
-      const totalAmount = parseFloat(document.getElementById('finalPrice').textContent);
+      // Get total amount — manual override takes priority over calculated
+      const totalAmount = manualTotalOverride !== null
+        ? manualTotalOverride
+        : parseFloat(document.getElementById('finalPrice').textContent);
       if (!totalAmount || totalAmount <= 0) {
-        alert('احسب التسعيرة أولاً');
+        alert('احسب التسعيرة أولاً أو أدخل المبلغ يدوياً');
         return;
       }
 
@@ -619,4 +698,8 @@ block content
     document.addEventListener('DOMContentLoaded', function() {
       initializeGovernorates();
       addItem();
+      document.getElementById('finalPriceInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); confirmFinalPriceEdit(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelFinalPriceEdit(); }
+      });
     });

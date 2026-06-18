@@ -382,17 +382,27 @@ exports.createShipment = async (req, res) => {
       });
     }
 
+    // Generate policy number: JO{merchantIdentifier}{4-digit sequential count}
+    let generatedPolicyNumber = policyNumber || null;
+    if (!generatedPolicyNumber && merchant.identifier) {
+      const shipmentCount = await prisma.shipment.count({
+        where: { merchantId, isDeleted: false },
+      });
+      const seq = String(shipmentCount + 1).padStart(4, "0");
+      generatedPolicyNumber = `JO${merchant.identifier}${seq}`;
+    }
+
     // Create shipment with initial status "طلب بيك اب"
     const shipment = await prisma.shipment.create({
       data: {
         merchantId,
         receiverId: parseInt(receiverId),
-        policyNumber: policyNumber || null,
+        policyNumber: generatedPolicyNumber,
         isOpenable: isOpenable === "true" || isOpenable === true,
         isFastDelivery: isFastDelivery,
         shipmentStatus: "طلب بيك اب", // Initial status
         totalAmount: parseFloat(totalAmount.toFixed(2)),
-        amountGained: parseFloat(0),
+        amountGained: parseFloat(amountGained) || 0,
         additionalNotes: additionalNotes || null,
         createdBy: req.user?.id || null,
       },
@@ -781,6 +791,40 @@ exports.getPriceList = async (req, res) => {
     res.json({ success: true, priceList });
   } catch (error) {
     console.error("Error fetching price list:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Manually override a shipment's total amount
+ */
+exports.updateTotalAmount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { totalAmount } = req.body;
+
+    if (totalAmount === undefined || totalAmount === null || totalAmount === "") {
+      return res.json({ success: false, error: "أدخل المبلغ الإجمالي" });
+    }
+
+    const parsed = parseFloat(totalAmount);
+    if (isNaN(parsed) || parsed < 0) {
+      return res.json({ success: false, error: "قيمة غير صحيحة" });
+    }
+
+    const shipment = await prisma.shipment.findUnique({ where: { id: parseInt(id) } });
+    if (!shipment || shipment.isDeleted) {
+      return res.json({ success: false, error: "الشحنة غير موجودة" });
+    }
+
+    await prisma.shipment.update({
+      where: { id: parseInt(id) },
+      data: { totalAmount: parsed, lastModifiedBy: req.user?.id || null },
+    });
+
+    res.json({ success: true, message: "تم تحديث المبلغ الإجمالي", totalAmount: parsed });
+  } catch (error) {
+    console.error("Error updating total amount:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

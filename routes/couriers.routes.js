@@ -167,6 +167,8 @@ router.get("/delivery-sheet/:courierId", couriersController.generateDeliveryShee
 router.get("/api/delivery-sheet/:courierId", couriersController.generateDeliverySheet);
 
 // Settlement
-router.get("/api/settlement/:courierId", couriersController.getCourierSettlement);
+router.get("/api/settlement/:courierId",         couriersController.getCourierSettlement);
+router.post("/api/settlement/:courierId/save",   couriersController.saveSettlement);
+router.get("/api/settlement/:courierId/history", couriersController.getSettlementHistory);
 
 module.exports = router;

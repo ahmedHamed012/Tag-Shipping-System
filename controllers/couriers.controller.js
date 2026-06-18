@@ -111,6 +111,7 @@ exports.createCourier = async (req, res) => {
       nationalId,
       drivingLicense,
       courierType,
+      deliveryFeePerShipment,
     } = req.body;
 
     if (!fullName || !phone) {
@@ -177,6 +178,7 @@ exports.createCourier = async (req, res) => {
         drivingLicenseFront,
         drivingLicenseBack,
         courierType: courierType || "PICKUP",
+        deliveryFeePerShipment: deliveryFeePerShipment ? parseFloat(deliveryFeePerShipment) : null,
         createdBy: req.user?.id || null,
       },
       include: {
@@ -210,6 +212,7 @@ exports.updateCourier = async (req, res) => {
       nationalId,
       drivingLicense,
       courierType,
+      deliveryFeePerShipment,
     } = req.body;
 
     if (!fullName || !phone) {
@@ -311,6 +314,9 @@ exports.updateCourier = async (req, res) => {
         drivingLicenseFront,
         drivingLicenseBack,
         ...(courierType && { courierType }),
+        deliveryFeePerShipment: deliveryFeePerShipment !== undefined && deliveryFeePerShipment !== ''
+          ? parseFloat(deliveryFeePerShipment)
+          : undefined,
         updatedBy: req.user?.id || null,
       },
       include: {
@@ -764,7 +770,7 @@ exports.generateDeliverySheet = async (req, res) => {
 };
 
 /**
- * Get settlement data for courier
+ * Get settlement data for courier (unsettled shipments only)
  */
 exports.getCourierSettlement = async (req, res) => {
   try {
@@ -776,73 +782,159 @@ exports.getCourierSettlement = async (req, res) => {
     });
 
     if (!courier) {
-      return res.status(404).json({
-        success: false,
-        error: "الساعي غير موجود",
-      });
+      return res.status(404).json({ success: false, error: "الساعي غير موجود" });
     }
 
-    // Build date filter
     const where = {
       courierId: parseInt(courierId),
       isDeleted: false,
+      isSettled: false,
     };
 
-    if (startDate && endDate) {
-      where.createdAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      };
-    }
+    if (startDate) where.updatedAt = { ...(where.updatedAt || {}), gte: new Date(startDate) };
+    if (endDate)   where.updatedAt = { ...(where.updatedAt || {}), lte: new Date(endDate + "T23:59:59.999Z") };
 
-    // Get shipment statistics
     const shipments = await prisma.shipment.findMany({
       where,
-      include: { merchant: true },
-      orderBy: { createdAt: "desc" },
+      include: {
+        receiver: { select: { fullName: true, phone1: true, governorate: true, city: true } },
+        merchant: { select: { name: true } },
+      },
+      orderBy: { updatedAt: "desc" },
     });
 
-    // Organize by status
-    const shipmentsByStatus = {
-      delivered: shipments.filter((s) => s.shipmentStatus === "تم التوصيل"),
-      outForDelivery: shipments.filter((s) => s.shipmentStatus === "قيد التوصيل"),
-      pending: shipments.filter((s) => s.shipmentStatus === "تم الاستقبال"),
-      returned: shipments.filter((s) =>
-        ["مرتجع", "مرتجع للتاجر", "مرتجع للمستودع"].includes(s.shipmentStatus)
-      ),
+    // Status groups
+    const DELIVERED   = ["تم التوصيل"];
+    const PARTIAL_EX  = ["تسليم جزئي", "استبدال"];
+    const RETURNED    = ["مرتجع", "مرتجع للتاجر", "مرتجع للمستودع", "مرتجع جزئي", "مرتجع استبدال"];
+    const STILL_OUT   = ["قيد التوصيل"];
+
+    const groups = {
+      delivered:  shipments.filter(s => DELIVERED.includes(s.shipmentStatus)),
+      partialEx:  shipments.filter(s => PARTIAL_EX.includes(s.shipmentStatus)),
+      returned:   shipments.filter(s => RETURNED.includes(s.shipmentStatus)),
+      stillOut:   shipments.filter(s => STILL_OUT.includes(s.shipmentStatus)),
     };
 
-    // Calculate totals
-    const stats = {
-      totalShipments: shipments.length,
-      delivered: shipmentsByStatus.delivered.length,
-      pending: shipmentsByStatus.pending.length,
-      outForDelivery: shipmentsByStatus.outForDelivery.length,
-      totalAmount: shipments.reduce(
-        (sum, s) => sum + parseFloat(s.totalAmount || 0),
-        0,
-      ),
-      commissionAmount: shipments.reduce(
-        (sum, s) => sum + parseFloat(s.commissionAmount || 0),
-        0,
-      ),
-      netAmount: shipments.reduce(
-        (sum, s) =>
-          sum + parseFloat((s.totalAmount || 0) - (s.commissionAmount || 0)),
-        0,
-      ),
-    };
+    // Shipments that can be settled (everything except still-out)
+    const settleable = [...groups.delivered, ...groups.partialEx, ...groups.returned];
+
+    const feePerShipment = parseFloat(courier.deliveryFeePerShipment || 0);
+
+    // Cash collected from customers = sum of deliveryCollectedAmount for completed shipments
+    const totalCollected = settleable.reduce(
+      (sum, s) => sum + parseFloat(s.deliveryCollectedAmount || 0), 0
+    );
+    // Courier earns a fee for each completed (non-still-out) shipment
+    const courierEarnings = settleable.length * feePerShipment;
+    const netHandover = totalCollected - courierEarnings;
 
     res.json({
       success: true,
       data: {
         courier,
-        stats,
-        shipments: shipmentsByStatus,
+        groups,
+        stats: {
+          total:       shipments.length,
+          delivered:   groups.delivered.length,
+          partialEx:   groups.partialEx.length,
+          returned:    groups.returned.length,
+          stillOut:    groups.stillOut.length,
+          settleable:  settleable.length,
+        },
+        financial: {
+          feePerShipment,
+          totalCollected:  parseFloat(totalCollected.toFixed(2)),
+          courierEarnings: parseFloat(courierEarnings.toFixed(2)),
+          netHandover:     parseFloat(netHandover.toFixed(2)),
+        },
       },
     });
   } catch (error) {
     console.error("Error getting settlement data:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Save & lock a courier settlement
+ */
+exports.saveSettlement = async (req, res) => {
+  try {
+    const { courierId } = req.params;
+    const { startDate, endDate, notes } = req.body;
+
+    const courier = await prisma.courier.findUnique({ where: { id: parseInt(courierId) } });
+    if (!courier) return res.status(404).json({ success: false, error: "الساعي غير موجود" });
+
+    const where = {
+      courierId: parseInt(courierId),
+      isDeleted: false,
+      isSettled: false,
+      shipmentStatus: {
+        in: ["تم التوصيل", "تسليم جزئي", "استبدال",
+             "مرتجع", "مرتجع للتاجر", "مرتجع للمستودع", "مرتجع جزئي", "مرتجع استبدال"],
+      },
+    };
+
+    if (startDate) where.updatedAt = { ...(where.updatedAt || {}), gte: new Date(startDate) };
+    if (endDate)   where.updatedAt = { ...(where.updatedAt || {}), lte: new Date(endDate + "T23:59:59.999Z") };
+
+    const shipments = await prisma.shipment.findMany({ where, select: { id: true, deliveryCollectedAmount: true } });
+
+    if (shipments.length === 0) {
+      return res.json({ success: false, error: "لا توجد شحنات قابلة للتقفيل" });
+    }
+
+    const feePerShipment = parseFloat(courier.deliveryFeePerShipment || 0);
+    const totalCollected  = shipments.reduce((sum, s) => sum + parseFloat(s.deliveryCollectedAmount || 0), 0);
+    const courierEarnings = shipments.length * feePerShipment;
+    const netHandover     = totalCollected - courierEarnings;
+
+    const settlement = await prisma.$transaction(async (tx) => {
+      const s = await tx.courierSettlement.create({
+        data: {
+          courierId:      parseInt(courierId),
+          periodFrom:     startDate ? new Date(startDate) : new Date(),
+          periodTo:       endDate   ? new Date(endDate + "T23:59:59.999Z") : new Date(),
+          shipmentCount:  shipments.length,
+          totalCollected: parseFloat(totalCollected.toFixed(2)),
+          courierEarnings:parseFloat(courierEarnings.toFixed(2)),
+          netHandover:    parseFloat(netHandover.toFixed(2)),
+          notes:          notes || null,
+          createdBy:      req.user?.id || null,
+        },
+      });
+
+      await tx.shipment.updateMany({
+        where: { id: { in: shipments.map(s => s.id) } },
+        data: { isSettled: true, settlementId: s.id },
+      });
+
+      return s;
+    });
+
+    res.json({ success: true, message: "تم حفظ التقفيل بنجاح", settlement });
+  } catch (error) {
+    console.error("Error saving settlement:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Get settlement history for a courier
+ */
+exports.getSettlementHistory = async (req, res) => {
+  try {
+    const { courierId } = req.params;
+    const settlements = await prisma.courierSettlement.findMany({
+      where: { courierId: parseInt(courierId) },
+      include: { _count: { select: { shipments: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    res.json({ success: true, settlements });
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };

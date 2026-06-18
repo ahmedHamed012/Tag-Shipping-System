@@ -73,6 +73,19 @@
                 placeholder="أدخل رقم رخصة القيادة"
               )
 
+          .row.g-3.mt-1
+            .col-md-6
+              label.form-label(for="deliveryFeePerShipment")
+                | عمولة التوصيل لكل شحنة (ج.م)
+              input#deliveryFeePerShipment.form-control(
+                type="number"
+                name="deliveryFeePerShipment"
+                step="0.01"
+                min="0"
+                placeholder="مثال: 10.00"
+              )
+              small.form-text.text-muted المبلغ الذي يحصل عليه الساعي عن كل شحنة يوصلها
+
           // Documents Upload
           .card.mt-3
             .card-header.bg-light

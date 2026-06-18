@@ -57,4 +57,9 @@ router.post("/api/bulk-update-status", shipmentsController.bulkUpdateStatus);
  */
 router.get("/api/price-list", shipmentsController.getPriceList);
 
+/**
+ * PATCH /shipments/api/update-total/:id - Manually override total amount
+ */
+router.patch("/api/update-total/:id", shipmentsController.updateTotalAmount);
+
 module.exports = router;

@@ -79,6 +79,9 @@ model Log {
 model Merchant {
   id String @id @default(uuid())
 
+  // Unique merchant identifier (4 alphanumeric chars, system-generated)
+  identifier String? @unique
+
   // Basic Information
   name    String
   phone   String @unique
@@ -286,6 +289,11 @@ model Shipment {
 
   isDeleted Boolean @default(false)
 
+  // Settlement tracking
+  isSettled    Boolean            @default(false)
+  settlementId Int?
+  settlement   CourierSettlement? @relation(fields: [settlementId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
   //////////////////////////////////////////////////////
   // Tracking
   //////////////////////////////////////////////////////
@@ -440,6 +448,9 @@ model Courier {
   // Courier Type - PICKUP or DELIVERY
   courierType String @default("PICKUP") // PICKUP | DELIVERY
 
+  // Delivery fee paid per completed shipment
+  deliveryFeePerShipment Decimal? @db.Decimal(10, 2)
+
   // Status
   isActive  Boolean @default(true)
   isDeleted Boolean @default(false)
@@ -452,12 +463,39 @@ model Courier {
   updatedBy Int?
 
   // Relations
-  shipments Shipment[]
-  creator   User?      @relation("CourierCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  updater   User?      @relation("CourierUpdatedBy", fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shipments    Shipment[]
+  settlements  CourierSettlement[]
+  creator      User?      @relation("CourierCreatedBy", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updater      User?      @relation("CourierUpdatedBy", fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([phone])
   @@index([fullName])
   @@index([courierType])
   @@map("couriers")
+}
+
+model CourierSettlement {
+  id        Int      @id @default(autoincrement())
+
+  courierId Int
+  courier   Courier  @relation(fields: [courierId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  periodFrom DateTime
+  periodTo   DateTime
+
+  // Financial summary snapshot
+  shipmentCount     Int
+  totalCollected    Decimal @db.Decimal(10, 2)
+  courierEarnings   Decimal @db.Decimal(10, 2)
+  netHandover       Decimal @db.Decimal(10, 2)
+
+  notes     String? @db.NVarChar(Max)
+
+  createdAt DateTime @default(now())
+  createdBy Int?
+
+  shipments Shipment[]
+
+  @@index([courierId])
+  @@map("courier_settlements")
 }

@@ -1,6 +1,18 @@
 const prisma = require("../prisma/prismaClient");
 const { parseMerchantsFromExcel } = require("../utils/excelUtils");
 
+async function generateUniqueIdentifier() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
+  let identifier;
+  let exists = true;
+  while (exists) {
+    identifier = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const found = await prisma.merchant.findUnique({ where: { identifier } });
+    exists = !!found;
+  }
+  return identifier;
+}
+
 const toDecimalOrNull = (value) => {
   if (value === undefined || value === null || value === "") return null;
   const parsed = Number(value);
@@ -121,8 +133,11 @@ exports.createMerchant = async (req, res) => {
       mimeType: file.mimetype || null,
     }));
 
+    const identifier = await generateUniqueIdentifier();
+
     const merchant = await prisma.merchant.create({
       data: {
+        identifier,
         name,
         phone,
         address,
@@ -343,8 +358,10 @@ exports.bulkUploadMerchants = async (req, res) => {
           continue;
         }
 
+        const bulkIdentifier = await generateUniqueIdentifier();
         const created = await prisma.merchant.create({
           data: {
+            identifier: bulkIdentifier,
             name: merchantData.name,
             phone: merchantData.phone,
             address: merchantData.address,
