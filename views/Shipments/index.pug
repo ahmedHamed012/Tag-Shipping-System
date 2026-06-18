@@ -1,128 +1,174 @@
 extends ../layouts/layout
 
 block content
-  .container-fluid.py-4
+  .container-fluid.py-4(style="overflow-x:hidden")
     .row.mb-4
       .col-md-8
         h1.mb-0
-          i.fas.fa-shipping-fast.me-2
+          i.bi.bi-box-seam-fill.me-2
           span الشحنات
       .col-md-4.text-end
+        button.btn.btn-success.me-2(onclick="openBarcodeModal()" title="مسح باركود")
+          i.bi.bi-upc-scan.me-2
+          span مسح باركود
         a.btn.btn-primary(href="/shipments/create")
-          i.fas.fa-plus.me-2
+          i.bi.bi-plus.me-2
           span إنشاء شحنة جديدة
 
-    // Search and Filter
+    // Filters
     .card.mb-4
-      .card-body
-        .row.g-3
-          .col-md-4
-            input.form-control(
+      .card-body.p-2
+        .d-flex.gap-2.align-items-end.flex-nowrap.pb-1(style="overflow-x:auto")
+          div(style="min-width:160px")
+            label.form-label.small.mb-1 بحث عام
+            input.form-control.form-control-sm(
               type="text"
               id="searchInput"
-              placeholder="ابحث عن رقم الحساب أو الاسم أو الهاتف..."
+              placeholder="بحث..."
               value=search
             )
-          .col-md-3
-            select.form-select(id="statusFilter")
-              option(value="") اختر الحالة
+          div(style="min-width:160px")
+            label.form-label.small.mb-1 التاجر
+            select.form-select.form-select-sm(id="merchantFilter")
+              option(value="") كل التجار
+              each merchant in merchants
+                option(value=merchant.id selected=(merchantId === merchant.id))= merchant.name
+          div(style="min-width:150px")
+            label.form-label.small.mb-1 الحالة
+            select.form-select.form-select-sm(id="statusFilter")
+              option(value="") كل الحالات
               option(value="طلب بيك اب" selected=(status === "طلب بيك اب")) طلب بيك اب
               option(value="تم الاستقبال" selected=(status === "تم الاستقبال")) تم الاستقبال
               option(value="قيد التوصيل" selected=(status === "قيد التوصيل")) قيد التوصيل
               option(value="تم التوصيل" selected=(status === "تم التوصيل")) تم التوصيل
+              option(value="تسليم جزئي" selected=(status === "تسليم جزئي")) تسليم جزئي
+              option(value="استبدال" selected=(status === "استبدال")) استبدال
+              option(value="مرتجع مع دفع الشحن" selected=(status === "مرتجع مع دفع الشحن")) مرتجع مع دفع الشحن
+              option(value="رفض التسليم مع دفع الشحن" selected=(status === "رفض التسليم مع دفع الشحن")) رفض التسليم مع دفع الشحن
               option(value="ملغاة" selected=(status === "ملغاة")) ملغاة
-          .col-md-3
-            select.form-select(id="limitSelect")
-              option(value="10" selected=(limit === 10)) 10 نتائج
-              option(value="20" selected=(limit === 20)) 20 نتيجة
-              option(value="50" selected=(limit === 50)) 50 نتيجة
-          .col-md-2
-            button.btn.btn-outline-secondary.w-100(onclick="resetFilters()")
-              i.fas.fa-redo.me-2
-              span إعادة تعيين
+              option(value="مؤجل" selected=(status === "مؤجل")) مؤجل
+              option(value="مرتجع للمستودع" selected=(status === "مرتجع للمستودع")) مرتجع للمستودع
+              option(value="مرتجع" selected=(status === "مرتجع")) مرتجع
+              option(value="مرتجع للتاجر" selected=(status === "مرتجع للتاجر")) مرتجع للتاجر
+              option(value="مرتجع جزئي" selected=(status === "مرتجع جزئي")) مرتجع جزئي
+              option(value="مرتجع استبدال" selected=(status === "مرتجع استبدال")) مرتجع استبدال
+          div(style="min-width:145px")
+            label.form-label.small.mb-1 من تاريخ
+            input.form-control.form-control-sm(type="date" id="dateFromFilter" value=dateFrom)
+          div(style="min-width:145px")
+            label.form-label.small.mb-1 إلى تاريخ
+            input.form-control.form-control-sm(type="date" id="dateToFilter" value=dateTo)
+          div(style="min-width:155px")
+            label.form-label.small.mb-1 اسم العميل
+            input.form-control.form-control-sm(type="text" id="customerNameFilter" placeholder="اسم العميل" value=customerName)
+          div(style="min-width:145px")
+            label.form-label.small.mb-1 هاتف العميل
+            input.form-control.form-control-sm(type="text" id="customerPhoneFilter" placeholder="رقم الهاتف" value=customerPhone)
+          div(style="min-width:145px")
+            label.form-label.small.mb-1 المحافظة
+            input.form-control.form-control-sm(type="text" id="governorateFilter" placeholder="المحافظة" value=governorate)
+          div(style="min-width:145px")
+            label.form-label.small.mb-1 المنطقة
+            input.form-control.form-control-sm(type="text" id="areaFilter" placeholder="المنطقة" value=area)
+          div(style="min-width:155px")
+            label.form-label.small.mb-1 المندوب
+            select.form-select.form-select-sm(id="courierFilter")
+              option(value="") كل المناديب
+              each courier in couriers
+                option(value=courier.id selected=(courierId == courier.id)) #{courier.fullName}
+          div(style="min-width:80px")
+            label.form-label.small.mb-1 عدد النتائج
+            select.form-select.form-select-sm(id="limitSelect")
+              option(value="10" selected=(limit === 10)) 10
+              option(value="20" selected=(limit === 20)) 20
+              option(value="50" selected=(limit === 50)) 50
+          div.d-flex.align-items-end(style="min-width:80px")
+            button.btn.btn-sm.btn-outline-secondary.w-100(onclick="resetFilters()")
+              i.bi.bi-arrow-repeat
 
     // Shipments Table
     .card
-      .table-responsive
-        table.table.table-hover.mb-0
+      .table-responsive(style="overflow-x:auto")
+        table.table.table-hover.table-sm.mb-0(style="min-width:1100px")
           thead.table-light
             tr
-              th.text-center رقم
-              th اسم التاجر
-              th بيانات المستقبل
-              th(style="width: 120px") الحالة
-              th.text-center المبلغ
-              th(style="width: 120px") الإجراءات
+              th.text-center(style="width:130px") رقم الشحنة
+              th التاجر
+              th اسم العميل
+              th هاتف العميل
+              th المحافظة
+              th المنطقة
+              th المندوب
+              th(style="width:90px") تاريخ الإنشاء
+              th.text-center(style="width:120px") الحالة
+              th.text-center(style="width:100px") المبلغ
+              th.text-center(style="width:90px") الوزن
+              th.text-center(style="width:100px") الإجراءات
 
           tbody
             if shipments && shipments.length > 0
-              each shipment, index in shipments
+              each shipment in shipments
                 tr
                   td.text-center.fw-bold
                     span.badge.bg-info
                       = shipment.policyNumber || ("SH-" + shipment.id)
-                  td
-                    .d-flex.align-items-center
-                      .me-2
-                        img(src="/uploads/merchant-" + shipment.merchant.id + ".jpg" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" onerror="this.src='/imgs/avatar.png'")
-                      div
-                        .fw-bold= shipment.merchant.name
-                        small.text-muted= shipment.merchant.phone
-                  td
-                    .fw-bold= shipment.receiver.fullName
-                    small.text-muted= shipment.receiver.phone1
-                    div.small.text-muted= shipment.receiver.governorate + " - " + shipment.receiver.city
+                  td= shipment.merchant.name
+                  td= shipment.receiver.fullName
+                  td= shipment.receiver.phone1
+                  td= shipment.receiver.governorate || "-"
+                  td= shipment.receiver.city || "-"
+                  td= shipment.courier ? shipment.courier.fullName : "-"
+                  td= new Date(shipment.createdAt).toLocaleDateString("ar-EG")
                   td.text-center
-                    - var statusColor = shipment.shipmentStatus === "طلب بيك اب" ? "warning" : (shipment.shipmentStatus === "تم التوصيل" ? "success" : "info")
-                    span.badge(class="bg-" + statusColor)
-                      = shipment.shipmentStatus
-                    .mt-2.text-center
-                      button.btn.btn-sm.btn-outline-primary.btn-block(
+                    - var statusColors = {"طلب بيك اب":"warning","تم الاستقبال":"info","قيد التوصيل":"primary","تم التوصيل":"success","تسليم جزئي":"warning","استبدال":"info","مرتجع مع دفع الشحن":"secondary","رفض التسليم مع دفع الشحن":"secondary","ملغاة":"danger","مؤجل":"secondary","مرتجع للمستودع":"dark","مرتجع":"dark","مرتجع للتاجر":"dark","مرتجع جزئي":"warning","مرتجع استبدال":"info"}
+                    - var statusColor = statusColors[shipment.shipmentStatus] || "secondary"
+                    span.badge(class="bg-" + statusColor)= shipment.shipmentStatus
+                    .mt-1
+                      button.btn.btn-sm.btn-outline-primary(
                         onclick="updateStatus(" + shipment.id + ")"
                         data-bs-toggle="modal"
                         data-bs-target="#statusModal"
+                        title="تغيير الحالة"
                       )
-                        i.fas.fa-edit
-                  td.text-center
-                    .fw-bold= shipment.totalAmount.toFixed(2) + " ج.م"
-                    small.text-success= "(" + shipment.amountGained.toFixed(2) + " كيلو)"
+                        i.bi.bi-pencil
+                  td.text-center.fw-bold= shipment.totalAmount.toFixed(2) + " ج.م"
+                  td.text-center= parseFloat(shipment.amountGained).toFixed(2) + " ك"
                   td.text-center
                     button.btn.btn-sm.btn-info(onclick="viewShipment(" + shipment.id + ")" title="عرض")
-                      i.fas.fa-eye
+                      i.bi.bi-eye
                     button.btn.btn-sm.btn-danger.ms-1(onclick="deleteShipment(" + shipment.id + ")" title="حذف")
-                      i.fas.fa-trash
+                      i.bi.bi-trash
             else
               tr
-                td.text-center.py-4(colspan="6")
+                td.text-center.py-4(colspan="12")
                   p.text-muted.mb-0 لا توجد شحنات
 
     // Pagination
     .row.mt-4
       .col-md-6
-        p.text-muted
-          = "إجمالي الشحنات: " + totalShipments
+        p.text-muted= "إجمالي الشحنات: " + totalShipments
       .col-md-6
         nav(aria-label="Page navigation").float-end
           ul.pagination.mb-0
             if currentPage > 1
               li.page-item
-                a.page-link(href=`/shipments?page=1&limit=${limit}&search=${search}&status=${status}`) أول
+                a.page-link(href="javascript:void(0)" onclick="goPage(1)") أول
               li.page-item
-                a.page-link(href=`/shipments?page=${currentPage - 1}&limit=${limit}&search=${search}&status=${status}`) السابق
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${currentPage - 1})`) السابق
             - for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++)
               if i === currentPage
                 li.page-item.active
                   span.page-link= i
               else
                 li.page-item
-                  a.page-link(href=`/shipments?page=${i}&limit=${limit}&search=${search}&status=${status}`)= i
+                  a.page-link(href="javascript:void(0)" onclick=`goPage(${i})`)= i
             if currentPage < totalPages
               li.page-item
-                a.page-link(href=`/shipments?page=${currentPage + 1}&limit=${limit}&search=${search}&status=${status}`) التالي
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${currentPage + 1})`) التالي
               li.page-item
-                a.page-link(href=`/shipments?page=${totalPages}&limit=${limit}&search=${search}&status=${status}`) أخير
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${totalPages})`) أخير
 
-    // Status Update Modal
+    // ── Single Status Update Modal ──────────────────────────────────────
     #statusModal.modal.fade(tabindex="-1")
       .modal-dialog
         .modal-content
@@ -131,19 +177,37 @@ block content
             button.btn-close(type="button" data-bs-dismiss="modal")
           .modal-body
             input#currentShipmentId(type="hidden")
+            input#currentShipmentStatus(type="hidden")
+            .mb-3
+              label.form-label.small.text-muted الحالة الحالية
+              p#currentStatusDisplay.fw-bold.mb-0 -
             .mb-3
               label.form-label الحالة الجديدة
-              select.form-select#newStatus
+              select.form-select#newStatus(onchange="onNewStatusChange()")
                 option(value="") اختر الحالة
-                option(value="طلب بيك اب") طلب بيك اب
-                option(value="تم الاستقبال") تم الاستقبال
-                option(value="قيد التوصيل") قيد التوصيل
-                option(value="تم التوصيل") تم التوصيل
-                option(value="ملغاة") ملغاة
+            #collectedAmountField.mb-3(style="display:none")
+              label.form-label المبلغ المحصل من العميل
+              input.form-control#collectedAmount(type="number" min="0" step="0.01" placeholder="0.00")
+            #shippingAmountField.mb-3(style="display:none")
+              label.form-label مبلغ الشحن المحصل من العميل
+              input.form-control#shippingAmount(type="number" min="0" step="0.01" placeholder="0.00")
+            #courierField.mb-3(style="display:none")
+              label.form-label مندوب الاستلام
+              select.form-select#pickupCourier
+                option(value="") اختر المندوب
+                each courier in couriers
+                  option(value=courier.id)= courier.fullName
+            #deliveryCourierField.mb-3(style="display:none")
+              label.form-label مندوب التوصيل
+              select.form-select#deliveryCourier
+                option(value="") اختر المندوب
+                each courier in couriers
+                  option(value=courier.id)= courier.fullName
           .modal-footer
             button.btn.btn-secondary(type="button" data-bs-dismiss="modal") إغلاق
-            button.btn.btn-primary(type="button" onclick="saveStatusChange()") حفظ التغييرات
+            button.btn.btn-primary(type="button" onclick="saveStatusChange()") حفظ
 
+    // ── Shipment Details Modal ──────────────────────────────────────────
     #shipmentDetailsModal.modal.fade(tabindex="-1")
       .modal-dialog.modal-lg
         .modal-content
@@ -151,163 +215,416 @@ block content
             h5.modal-title تفاصيل الشحنة
             button.btn-close(type="button" data-bs-dismiss="modal")
           .modal-body#shipmentDetailsBody
-            // Loaded via JavaScript
+
+    // ── Barcode Scanner Modal ───────────────────────────────────────────
+    #barcodeModal.modal.fade(tabindex="-1")
+      .modal-dialog.modal-xl
+        .modal-content
+          .modal-header
+            h5.modal-title
+              i.bi.bi-upc-scan.me-2
+              span مسح الباركود
+            button.btn-close(type="button" data-bs-dismiss="modal")
+          .modal-body
+            .row.mb-3
+              .col
+                .input-group
+                  input.form-control#barcodeInput(
+                    type="text"
+                    placeholder="امسح الباركود أو اكتبه ثم اضغط Enter..."
+                    autocomplete="off"
+                    autofocus
+                  )
+                  button.btn.btn-primary(type="button" onclick="scanBarcode()")
+                    i.bi.bi-search
+            .table-responsive
+              table.table.table-sm.table-hover
+                thead.table-light
+                  tr
+                    th.text-center(style="width:40px")
+                      input.form-check-input#selectAll(type="checkbox" onchange="toggleSelectAll(this)")
+                    th رقم الشحنة
+                    th التاجر
+                    th العميل
+                    th المحافظة
+                    th المنطقة
+                    th.text-center الحالة الحالية
+                tbody#barcodeTableBody
+                  tr#barcodePlaceholder
+                    td.text-center.text-muted.py-3(colspan="7") لم يتم مسح أي شحنة بعد
+            #barcodeAlert
+          .modal-footer
+            .d-flex.align-items-center.gap-2.w-100
+              select.form-select.form-select-sm(id="bulkNewStatus" style="max-width:220px")
+                option(value="") اختر الحالة الجديدة
+                option(value="تم الاستقبال") تم الاستقبال
+                option(value="قيد التوصيل") قيد التوصيل
+                option(value="تم التوصيل") تم التوصيل
+                option(value="رفض التسليم مع دفع الشحن") رفض التسليم مع دفع الشحن
+                option(value="ملغاة") ملغاة
+                option(value="مؤجل") مؤجل
+                option(value="مرتجع للمستودع") مرتجع للمستودع
+                option(value="مرتجع") مرتجع
+                option(value="مرتجع للتاجر") مرتجع للتاجر
+              button.btn.btn-primary(type="button" onclick="bulkUpdateStatus()")
+                i.bi.bi-check-all.me-1
+                span تحديث المحددة
+              button.btn.btn-outline-danger.ms-auto(type="button" onclick="clearBarcodeTable()")
+                i.bi.bi-trash.me-1
+                span مسح الكل
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") إغلاق
 
   script.
-    const shipments = !{JSON.stringify(shipments)};
+    // ── Filters ──────────────────────────────────────────────────────────
+
+    function getFilterParams() {
+      return new URLSearchParams({
+        page: 1,
+        limit: document.getElementById('limitSelect').value,
+        search: document.getElementById('searchInput').value,
+        status: document.getElementById('statusFilter').value,
+        merchantId: document.getElementById('merchantFilter').value,
+        dateFrom: document.getElementById('dateFromFilter').value,
+        dateTo: document.getElementById('dateToFilter').value,
+        customerName: document.getElementById('customerNameFilter').value,
+        customerPhone: document.getElementById('customerPhoneFilter').value,
+        governorate: document.getElementById('governorateFilter').value,
+        area: document.getElementById('areaFilter').value,
+        courierId: document.getElementById('courierFilter').value,
+      }).toString();
+    }
 
     function updateFilters() {
-      const search = document.getElementById('searchInput').value;
-      const status = document.getElementById('statusFilter').value;
-      const limit = document.getElementById('limitSelect').value;
-      window.location.href = `/shipments?page=1&limit=${limit}&search=${search}&status=${status}`;
+      window.location.href = '/shipments?' + getFilterParams();
+    }
+
+    function goPage(page) {
+      const params = new URLSearchParams(getFilterParams());
+      params.set('page', page);
+      window.location.href = '/shipments?' + params.toString();
     }
 
     function resetFilters() {
-      document.getElementById('searchInput').value = '';
-      document.getElementById('statusFilter').value = '';
-      document.getElementById('limitSelect').value = '10';
       window.location.href = '/shipments';
     }
 
-    // Search and filter triggers
-    document.getElementById('searchInput').addEventListener('change', updateFilters);
-    document.getElementById('statusFilter').addEventListener('change', updateFilters);
-    document.getElementById('limitSelect').addEventListener('change', updateFilters);
+    ['searchInput', 'customerNameFilter', 'customerPhoneFilter', 'governorateFilter', 'areaFilter'].forEach(id => {
+      document.getElementById(id).addEventListener('change', updateFilters);
+    });
+    ['statusFilter', 'merchantFilter', 'courierFilter', 'limitSelect', 'dateFromFilter', 'dateToFilter'].forEach(id => {
+      document.getElementById(id).addEventListener('change', updateFilters);
+    });
+
+    // ── Status Lifecycle ─────────────────────────────────────────────────
+
+    const ALLOWED_TRANSITIONS = {
+      'طلب بيك اب':                    ['تم الاستقبال'],
+      'تم الاستقبال':                   ['قيد التوصيل', 'ملغاة'],
+      'قيد التوصيل':                    ['تم التوصيل', 'تسليم جزئي', 'استبدال', 'مرتجع مع دفع الشحن', 'رفض التسليم مع دفع الشحن', 'مؤجل'],
+      'مرتجع مع دفع الشحن':             ['تم الاستقبال'],
+      'رفض التسليم مع دفع الشحن':       ['مرتجع للمستودع'],
+      'مؤجل':                           ['مرتجع للمستودع'],
+      'مرتجع للمستودع':                 ['مرتجع', 'مرتجع للتاجر'],
+      'مرتجع جزئي':                     ['مرتجع للمستودع'],
+      'مرتجع استبدال':                  ['تم الاستقبال'],
+    };
+    const REQUIRES_PICKUP_COURIER_FROM = ['مرتجع مع دفع الشحن', 'مرتجع استبدال'];
+
+    // ── Single Status Update ─────────────────────────────────────────────
 
     function updateStatus(shipmentId) {
       document.getElementById('currentShipmentId').value = shipmentId;
-      document.getElementById('newStatus').value = '';
+      hideConditionalFields();
+
+      fetch(`/shipments/api/get/${shipmentId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) { showAlert('error', data.error); return; }
+        const currentStatus = data.shipment.shipmentStatus;
+        document.getElementById('currentShipmentStatus').value = currentStatus;
+        document.getElementById('currentStatusDisplay').textContent = currentStatus;
+
+        const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
+        const select = document.getElementById('newStatus');
+        select.innerHTML = allowed.length
+          ? '<option value="">اختر الحالة</option>' + allowed.map(s => `<option value="${s}">${s}</option>`).join('')
+          : '<option value="">لا توجد حالات متاحة</option>';
+        select.disabled = allowed.length === 0;
+      })
+      .catch(err => showAlert('error', err.message));
+    }
+
+    function onNewStatusChange() {
+      const newStatus = document.getElementById('newStatus').value;
+      const currentStatus = document.getElementById('currentShipmentStatus').value;
+      hideConditionalFields();
+      if (newStatus === 'تسليم جزئي')
+        document.getElementById('collectedAmountField').style.display = '';
+      if (newStatus === 'مرتجع مع دفع الشحن')
+        document.getElementById('shippingAmountField').style.display = '';
+      if (newStatus === 'تم الاستقبال' && REQUIRES_PICKUP_COURIER_FROM.includes(currentStatus))
+        document.getElementById('courierField').style.display = '';
+      if (newStatus === 'قيد التوصيل')
+        document.getElementById('deliveryCourierField').style.display = '';
+    }
+
+    function hideConditionalFields() {
+      ['collectedAmountField','shippingAmountField','courierField','deliveryCourierField'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+      });
+      document.getElementById('collectedAmount').value = '';
+      document.getElementById('shippingAmount').value = '';
+      document.getElementById('pickupCourier').value = '';
+      document.getElementById('deliveryCourier').value = '';
     }
 
     function saveStatusChange() {
       const shipmentId = document.getElementById('currentShipmentId').value;
       const newStatus = document.getElementById('newStatus').value;
+      const currentStatus = document.getElementById('currentShipmentStatus').value;
+      if (!newStatus) { showAlert('error', 'اختر الحالة الجديدة'); return; }
 
-      if (!newStatus) {
-        alert('اختر الحالة الجديدة');
-        return;
+      const body = { shipmentStatus: newStatus };
+
+      if (newStatus === 'تسليم جزئي') {
+        const amt = document.getElementById('collectedAmount').value;
+        if (!amt) { showAlert('error', 'أدخل المبلغ المحصل من العميل'); return; }
+        body.collectedAmount = parseFloat(amt);
+      }
+
+      if (newStatus === 'مرتجع مع دفع الشحن') {
+        const amt = document.getElementById('shippingAmount').value;
+        if (!amt) { showAlert('error', 'أدخل مبلغ الشحن المحصل'); return; }
+        body.collectedAmount = parseFloat(amt);
+      }
+
+      if (newStatus === 'تم الاستقبال' && REQUIRES_PICKUP_COURIER_FROM.includes(currentStatus)) {
+        const courierId = document.getElementById('pickupCourier').value;
+        if (!courierId) { showAlert('error', 'حدد مندوب الاستلام'); return; }
+        body.courierId = parseInt(courierId);
+      }
+
+      if (newStatus === 'قيد التوصيل') {
+        const courierId = document.getElementById('deliveryCourier').value;
+        if (!courierId) { showAlert('error', 'حدد مندوب التوصيل'); return; }
+        body.courierId = parseInt(courierId);
       }
 
       fetch(`/shipments/api/update-status/${shipmentId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shipmentStatus: newStatus })
+        body: JSON.stringify(body)
       })
-      .then(res => res.json())
+      .then(r => r.json())
       .then(data => {
-        if (data.success) {
-          showAlert('success', data.message);
-          setTimeout(() => location.reload(), 1500);
-        } else {
-          showAlert('error', data.error);
-        }
+        bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
+        if (data.success) { showAlert('success', data.message); setTimeout(() => location.reload(), 1200); }
+        else showAlert('error', data.error);
       })
       .catch(err => showAlert('error', err.message));
     }
+
+    // ── View Shipment ────────────────────────────────────────────────────
 
     function viewShipment(shipmentId) {
       fetch(`/shipments/api/get/${shipmentId}`)
-      .then(res => res.json())
+      .then(r => r.json())
       .then(data => {
-        if (data.success) {
-          const s = data.shipment;
-          let itemsHtml = '';
-          s.items.forEach(item => {
-            itemsHtml += `
-              <tr>
-                <td>${item.productName}</td>
-                <td>${item.count}</td>
-                <td>${item.netWeight || '-'}</td>
-                <td>${item.size || '-'}</td>
-              </tr>
-            `;
-          });
+        if (!data.success) { showAlert('error', data.error); return; }
+        const s = data.shipment;
+        let itemsHtml = s.items.map(item => `
+          <tr>
+            <td>${item.productName}</td>
+            <td>${item.count}</td>
+            <td>${item.netWeight || '-'}</td>
+            <td>${item.size || '-'}</td>
+            <td>${parseFloat(item.price || 0).toFixed(2)} ج.م</td>
+          </tr>`).join('');
 
-          const html = `
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <h6 class="text-muted">رقم الحساب</h6>
-                <p class="fw-bold">${s.policyNumber || 'SH-' + s.id}</p>
-              </div>
-              <div class="col-md-6">
-                <h6 class="text-muted">الحالة</h6>
-                <span class="badge bg-info">${s.shipmentStatus}</span>
-              </div>
-            </div>
-            <hr>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <h6 class="text-muted">التاجر</h6>
-                <p class="fw-bold">${s.merchant.name}</p>
-                <small class="text-muted">${s.merchant.phone}</small>
-              </div>
-              <div class="col-md-6">
-                <h6 class="text-muted">المستقبل</h6>
-                <p class="fw-bold">${s.receiver.fullName}</p>
-                <small class="text-muted">${s.receiver.phone1}</small>
-              </div>
-            </div>
-            <hr>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <h6 class="text-muted">المبلغ الإجمالي</h6>
-                <p class="fw-bold text-success">${s.totalAmount.toFixed(2)} ج.م</p>
-              </div>
-              <div class="col-md-6">
-                <h6 class="text-muted">الوزن</h6>
-                <p class="fw-bold">${s.amountGained.toFixed(2)} كيلو</p>
-              </div>
-            </div>
-            <hr>
-            <h6>المنتجات</h6>
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>اسم المنتج</th>
-                  <th>الكمية</th>
-                  <th>الوزن</th>
-                  <th>الحجم</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-              </tbody>
-            </table>
-            ${s.additionalNotes ? `<p><strong>ملاحظات:</strong> ${s.additionalNotes}</p>` : ''}
-          `;
-          document.getElementById('shipmentDetailsBody').innerHTML = html;
-          const modal = new bootstrap.Modal(document.getElementById('shipmentDetailsModal'));
-          modal.show();
-        }
+        document.getElementById('shipmentDetailsBody').innerHTML = `
+          <div class="row mb-3">
+            <div class="col-md-6"><h6 class="text-muted">رقم الشحنة</h6><p class="fw-bold">${s.policyNumber || 'SH-' + s.id}</p></div>
+            <div class="col-md-6"><h6 class="text-muted">الحالة</h6><span class="badge bg-info">${s.shipmentStatus}</span></div>
+          </div><hr>
+          <div class="row mb-3">
+            <div class="col-md-6"><h6 class="text-muted">التاجر</h6><p class="fw-bold">${s.merchant.name}</p><small class="text-muted">${s.merchant.phone}</small></div>
+            <div class="col-md-6"><h6 class="text-muted">العميل</h6><p class="fw-bold">${s.receiver.fullName}</p><small class="text-muted">${s.receiver.phone1}</small><div class="small text-muted">${s.receiver.governorate || ''} ${s.receiver.city ? '- ' + s.receiver.city : ''}</div></div>
+          </div><hr>
+          <div class="row mb-3">
+            <div class="col-md-4"><h6 class="text-muted">المبلغ الإجمالي</h6><p class="fw-bold text-success">${parseFloat(s.totalAmount).toFixed(2)} ج.م</p></div>
+            <div class="col-md-4"><h6 class="text-muted">الوزن</h6><p class="fw-bold">${parseFloat(s.amountGained).toFixed(2)} كيلو</p></div>
+            <div class="col-md-4"><h6 class="text-muted">المندوب</h6><p class="fw-bold">${s.courier ? s.courier.fullName : '-'}</p></div>
+          </div><hr>
+          <h6>المنتجات</h6>
+          <table class="table table-sm"><thead><tr><th>المنتج</th><th>الكمية</th><th>الوزن</th><th>الحجم</th><th>السعر</th></tr></thead><tbody>${itemsHtml}</tbody></table>
+          ${s.additionalNotes ? `<p><strong>ملاحظات:</strong> ${s.additionalNotes}</p>` : ''}`;
+        new bootstrap.Modal(document.getElementById('shipmentDetailsModal')).show();
       })
       .catch(err => showAlert('error', err.message));
     }
+
+    // ── Delete ───────────────────────────────────────────────────────────
 
     function deleteShipment(shipmentId) {
       if (!confirm('هل أنت متأكد من حذف هذه الشحنة؟')) return;
-
       fetch(`/shipments/api/delete/${shipmentId}`, { method: 'DELETE' })
-      .then(res => res.json())
+      .then(r => r.json())
       .then(data => {
-        if (data.success) {
-          showAlert('success', data.message);
-          setTimeout(() => location.reload(), 1500);
-        } else {
-          showAlert('error', data.error);
-        }
+        if (data.success) { showAlert('success', data.message); setTimeout(() => location.reload(), 1200); }
+        else showAlert('error', data.error);
       })
       .catch(err => showAlert('error', err.message));
     }
 
+    // ── Barcode Scanner ──────────────────────────────────────────────────
+
+    const scannedShipments = {}; // keyed by shipment id
+
+    function openBarcodeModal() {
+      const modal = new bootstrap.Modal(document.getElementById('barcodeModal'));
+      modal.show();
+      document.getElementById('barcodeModal').addEventListener('shown.bs.modal', () => {
+        document.getElementById('barcodeInput').focus();
+      }, { once: true });
+    }
+
+    document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); scanBarcode(); }
+    });
+
+    function scanBarcode() {
+      const barcode = document.getElementById('barcodeInput').value.trim();
+      if (!barcode) return;
+      document.getElementById('barcodeInput').value = '';
+
+      // Check if already scanned
+      const existing = Object.values(scannedShipments).find(s => s.policyNumber === barcode || String(s.id) === barcode);
+      if (existing) {
+        setBarcodeAlert('warning', `الشحنة ${barcode} موجودة بالفعل في القائمة`);
+        document.getElementById('barcodeInput').focus();
+        return;
+      }
+
+      fetch(`/shipments/api/barcode?barcode=${encodeURIComponent(barcode)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) { setBarcodeAlert('danger', data.error); return; }
+        const s = data.shipment;
+        scannedShipments[s.id] = s;
+        addBarcodeRow(s);
+        setBarcodeAlert('success', `تمت إضافة الشحنة ${s.policyNumber || 'SH-' + s.id}`);
+        document.getElementById('barcodeInput').focus();
+      })
+      .catch(err => setBarcodeAlert('danger', err.message));
+    }
+
+    function addBarcodeRow(s) {
+      const placeholder = document.getElementById('barcodePlaceholder');
+      if (placeholder) placeholder.remove();
+
+      const color = getStatusColor(s.shipmentStatus);
+
+      const tr = document.createElement('tr');
+      tr.id = 'brow-' + s.id;
+      tr.innerHTML = `
+        <td class="text-center"><input class="form-check-input barcode-checkbox" type="checkbox" value="${s.id}" checked></td>
+        <td><span class="badge bg-info">${s.policyNumber || 'SH-' + s.id}</span></td>
+        <td>${s.merchant.name}</td>
+        <td>${s.receiver.fullName}<br><small class="text-muted">${s.receiver.phone1}</small></td>
+        <td>${s.receiver.governorate || '-'}</td>
+        <td>${s.receiver.city || '-'}</td>
+        <td class="text-center"><span class="badge bg-${color}" data-status="${s.shipmentStatus}">${s.shipmentStatus}</span></td>`;
+      document.getElementById('barcodeTableBody').appendChild(tr);
+    }
+
+    function toggleSelectAll(cb) {
+      document.querySelectorAll('.barcode-checkbox').forEach(c => c.checked = cb.checked);
+    }
+
+    function clearBarcodeTable() {
+      Object.keys(scannedShipments).forEach(k => delete scannedShipments[k]);
+      const tbody = document.getElementById('barcodeTableBody');
+      tbody.innerHTML = '<tr id="barcodePlaceholder"><td class="text-center text-muted py-3" colspan="7">لم يتم مسح أي شحنة بعد</td></tr>';
+      document.getElementById('selectAll').checked = false;
+      document.getElementById('barcodeAlert').innerHTML = '';
+    }
+
+    function bulkUpdateStatus() {
+      const checked = [...document.querySelectorAll('.barcode-checkbox:checked')];
+      if (checked.length === 0) { setBarcodeAlert('warning', 'اختر شحنة على الأقل'); return; }
+
+      const newStatus = document.getElementById('bulkNewStatus').value;
+      if (!newStatus) { setBarcodeAlert('warning', 'اختر الحالة الجديدة'); return; }
+
+      // Validate all selected have same current status
+      const statuses = checked.map(cb => {
+        const row = document.getElementById('brow-' + cb.value);
+        return row.querySelector('[data-status]').dataset.status;
+      });
+      const uniqueStatuses = [...new Set(statuses)];
+      if (uniqueStatuses.length > 1) {
+        let details = checked.map(cb => {
+          const row = document.getElementById('brow-' + cb.value);
+          const barcode = row.querySelector('.badge.bg-info').textContent.trim();
+          const status = row.querySelector('[data-status]').dataset.status;
+          return `${barcode} — ${status}`;
+        }).join('\n');
+        setBarcodeAlert('danger', 'الشحنات المحددة لها حالات مختلفة:\n' + details);
+        return;
+      }
+
+      const shipmentIds = checked.map(cb => parseInt(cb.value));
+      fetch('/shipments/api/bulk-update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shipmentIds, shipmentStatus: newStatus })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setBarcodeAlert('success', data.message);
+          // Update displayed status badges
+          checked.forEach(cb => {
+            const row = document.getElementById('brow-' + cb.value);
+            const badge = row.querySelector('[data-status]');
+            badge.dataset.status = newStatus;
+            badge.textContent = newStatus;
+            badge.className = 'badge bg-' + getStatusColor(newStatus);
+            if (scannedShipments[cb.value]) scannedShipments[cb.value].shipmentStatus = newStatus;
+          });
+        } else {
+          setBarcodeAlert('danger', data.error);
+        }
+      })
+      .catch(err => setBarcodeAlert('danger', err.message));
+    }
+
+    function setBarcodeAlert(type, message) {
+      const el = document.getElementById('barcodeAlert');
+      el.innerHTML = `<div class="alert alert-${type} py-2 mt-2 mb-0" style="white-space:pre-wrap">${message}</div>`;
+      setTimeout(() => { if (el.firstChild) el.firstChild.remove(); }, 5000);
+    }
+
+    // ── Status Color Helper ──────────────────────────────────────────────
+
+    function getStatusColor(status) {
+      const map = {
+        'طلب بيك اب':'warning', 'تم الاستقبال':'info', 'قيد التوصيل':'primary',
+        'تم التوصيل':'success', 'تسليم جزئي':'warning', 'استبدال':'info',
+        'مرتجع مع دفع الشحن':'secondary', 'رفض التسليم مع دفع الشحن':'secondary',
+        'ملغاة':'danger', 'مؤجل':'secondary', 'مرتجع للمستودع':'dark',
+        'مرتجع':'dark', 'مرتجع للتاجر':'dark', 'مرتجع جزئي':'warning', 'مرتجع استبدال':'info',
+      };
+      return map[status] || 'secondary';
+    }
+
+    // ── Global Alert ─────────────────────────────────────────────────────
+
     function showAlert(type, message) {
       const alertDiv = document.createElement('div');
-      alertDiv.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
-      alertDiv.innerHTML = `
-        <i class="fas fa-${type === 'error' ? 'times-circle' : 'check-circle'} me-2"></i>
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      `;
-      document.body.insertAdjacentElement('afterbegin', alertDiv);
+      alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+      alertDiv.style.zIndex = 9999;
+      alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+      document.body.appendChild(alertDiv);
       setTimeout(() => alertDiv.remove(), 5000);
     }

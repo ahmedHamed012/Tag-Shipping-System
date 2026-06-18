@@ -43,6 +43,16 @@ router.post("/api/update-status/:id", shipmentsController.updateShipmentStatus);
 router.delete("/api/delete/:id", shipmentsController.deleteShipment);
 
 /**
+ * GET /shipments/api/barcode - Get shipment by barcode
+ */
+router.get("/api/barcode", shipmentsController.getShipmentByBarcode);
+
+/**
+ * POST /shipments/api/bulk-update-status - Bulk update shipment status
+ */
+router.post("/api/bulk-update-status", shipmentsController.bulkUpdateStatus);
+
+/**
  * GET /shipments/api/price-list - Get price list
  */
 router.get("/api/price-list", shipmentsController.getPriceList);

@@ -575,11 +575,11 @@ exports.assignShipmentToCourier = async (req, res) => {
       });
     }
 
-    // Validate: Status not "Cancelled"
-    if (["Cancelled", "ملغى", "ملغاة"].includes(shipment.shipmentStatus)) {
+    // Validate: must be received at warehouse before going out for delivery
+    if (shipment.shipmentStatus !== "تم الاستقبال") {
       return res.status(400).json({
         success: false,
-        error: "لا يمكن إسناد شحنة ملغاة",
+        error: `لا يمكن إسناد الشحنة لأن حالتها الحالية هي "${shipment.shipmentStatus}". يجب أن تكون "تم الاستقبال"`,
       });
     }
 
@@ -588,7 +588,7 @@ exports.assignShipmentToCourier = async (req, res) => {
       where: { id: shipment.id },
       data: {
         courierId: parseInt(courierId, 10),
-        shipmentStatus: "Out for Delivery",
+        shipmentStatus: "قيد التوصيل",
         lastModifiedBy: req.user?.id || null,
       },
       include: {
@@ -622,7 +622,7 @@ exports.getCurrentShipments = async (req, res) => {
 
     const where = {
       courierId: parseInt(courierId),
-      shipmentStatus: { in: ["Out for Delivery", "في الطريق", "قيد التوصيل"] },
+      shipmentStatus: "قيد التوصيل",
       isDeleted: false,
     };
 
@@ -670,14 +670,8 @@ exports.getPreviousShipments = async (req, res) => {
 
     const where = {
       courierId: parseInt(courierId),
-      // "Previous Shipments": assigned shipments that have not been returned to warehouse yet
       shipmentStatus: {
-        notIn: [
-          "Returned",
-          "مرجوع",
-          "Returned to Warehouse",
-          "تم الإرجاع للمخزن",
-        ],
+        notIn: ["مرتجع", "مرتجع للتاجر", "مرتجع للمستودع", "قيد التوصيل"],
       },
       isDeleted: false,
     };
@@ -746,7 +740,7 @@ exports.generateDeliverySheet = async (req, res) => {
           gte: today,
           lt: tomorrow,
         },
-        shipmentStatus: { in: ["Out for Delivery", "في الطريق"] },
+        shipmentStatus: "قيد التوصيل",
         isDeleted: false,
       },
       include: {
@@ -810,15 +804,11 @@ exports.getCourierSettlement = async (req, res) => {
 
     // Organize by status
     const shipmentsByStatus = {
-      delivered: shipments.filter((s) => s.shipmentStatus === "Delivered"),
-      outForDelivery: shipments.filter(
-        (s) =>
-          s.shipmentStatus === "Out for Delivery" ||
-          s.shipmentStatus === "في الطريق",
-      ),
-      pending: shipments.filter((s) => s.shipmentStatus === "Pending"),
-      returned: shipments.filter(
-        (s) => s.shipmentStatus === "Returned" || s.shipmentStatus === "مرجوع",
+      delivered: shipments.filter((s) => s.shipmentStatus === "تم التوصيل"),
+      outForDelivery: shipments.filter((s) => s.shipmentStatus === "قيد التوصيل"),
+      pending: shipments.filter((s) => s.shipmentStatus === "تم الاستقبال"),
+      returned: shipments.filter((s) =>
+        ["مرتجع", "مرتجع للتاجر", "مرتجع للمستودع"].includes(s.shipmentStatus)
       ),
     };
 

@@ -32,45 +32,12 @@ block content
                     option(value=merchant.id data-maxweight=merchant.maxShipmentWeight data-extrafee=merchant.extraWeightFeePerKg)
                       = merchant.name
 
-              // Receiver Search Section
+              // Receiver Details Section
               .card.border-info.mb-3
                 .card-header.bg-light
                   h6.mb-0
-                    i.fas.fa-search.me-2
-                    span ابحث عن المستقبل
-
-                .card-body
-                  .row.g-2
-                    .col-md-8
-                      input.form-control#receiverPhone(
-                        type="tel"
-                        placeholder="أدخل رقم هاتف المستقبل"
-                        maxlength="15"
-                      )
-                    .col-md-4
-                      button.btn.btn-info.w-100(type="button" onclick="searchReceiver()")
-                        i.fas.fa-search.me-2
-                        span بحث
-
-                  #receiverSearchResult.mt-3(style="display: none;")
-                    .alert.alert-success.mb-0
-                      .row
-                        .col-md-8
-                          div
-                            strong بيانات المستقبل المجدة
-                            div
-                              span#foundReceiverName
-                        .col-md-4.text-end
-                          button.btn.btn-sm.btn-success(type="button" onclick="selectFoundReceiver()")
-                            i.fas.fa-check.me-1
-                            span استخدم هذا المستقبل
-
-              // Receiver Details (If not found)
-              #manualReceiverForm.card.border-warning.mb-3(style="display: none;")
-                .card-header.bg-light
-                  h6.mb-0
-                    i.fas.fa-user.me-2
-                    span بيانات المستقبل الجديد
+                    i.bi.bi-people.me-2
+                    span بيانات المستقبل
 
                 .card-body
                   .row.g-3
@@ -81,26 +48,30 @@ block content
                         required
                       )
                     .col-md-6
-                      input.form-control#receiverPhone1(
-                        type="tel"
-                        placeholder="الهاتف الأساسي"
-                        required
-                      )
+                      .input-group
+                        input.form-control#receiverPhone1(
+                          type="tel"
+                          placeholder="الهاتف الأساسي"
+                          maxlength="15"
+                          required
+                        )
+                        button.btn.btn-outline-info(type="button" onclick="searchReceiverByPhone()" title="بحث عن مستقبل")
+                          i.bi.bi-search
 
                   .row.g-3
                     .col-md-6
-                      input.form-control#receiverPhone2(
+                      input.my-1.form-control#receiverPhone2(
                         type="tel"
                         placeholder="الهاتف الفرعي (اختياري)"
                       )
                     .col-md-6
-                      input.form-control#receiverAddress(
+                      input.my-1.form-control#receiverAddress(
                         type="text"
                         placeholder="العنوان"
                         required
                       )
 
-                  .row.g-3
+                  .row.g-3.my-2
                     .col-md-6
                       label.form-label.fw-bold المحافظة *
                       select.form-select#receiverGovernorate(
@@ -111,6 +82,7 @@ block content
                     .col-md-6
                       label.form-label.fw-bold المدينة *
                       select.form-select#receiverCity(
+                        onchange="onReceiverCityChange()"
                         required
                       )
                         option(value="") -- اختر المدينة --
@@ -150,6 +122,34 @@ block content
                         placeholder="رقم الحساب (اختياري)"
                       )
 
+                  hr
+
+                  .mb-3
+                    label.form-label.fw-bold الوزن الإجمالي (كيلو) *
+                    input.form-control#amountGained(
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      onchange="calculateQuote()"
+                      required
+                    )
+
+              // Products Section (moved into main form)
+              .card.mb-3
+                .card-header.bg-primary.text-white
+                  h6.mb-0
+                    i.fas.fa-boxes.me-2
+                    span المنتجات
+
+                .card-body
+                  #itemsList
+                    // Items will be added here dynamically
+
+                  .mt-3
+                    button.btn.btn-outline-primary.w-100(type="button" onclick="addItem()")
+                      i.fas.fa-plus-circle.me-2
+                      span إضافة منتج
+
               // Additional Notes
               .mb-3
                 label.form-label الملاحظات الإضافية
@@ -167,53 +167,27 @@ block content
                 span حساب التسعيرة
 
             .card-body
-              // Location Selection for Price
-              .mb-3
-                label.form-label.fw-bold المحافظة *
-                select.form-select#priceGovernorate(
-                  onchange="onPriceGovernorateChange();calculateQuote();"
-                  required
-                )
-                  option(value="") -- اختر المحافظة --
-
-              .mb-3
-                label.form-label.fw-bold المدينة *
-                select.form-select#priceCity(
-                  onchange="calculateQuote()"
-                  required
-                )
-                  option(value="") -- اختر المدينة --
-
-              hr
-
-              // Weight and Amount
-              .mb-3
-                label.form-label.fw-bold الوزن الإجمالي (كيلو) *
-                input.form-control#amountGained(
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  onchange="calculateQuote()"
-                  required
-                )
-
-              hr
-
               // Price Breakdown
               .bg-light.p-3.rounded.mb-3
                 .row.mb-2
                   .col-7
-                    small.text-muted السعر الأساسي:
+                    small.text-muted إجمالي المنتجات:
+                  .col-5.text-end
+                    span#productsTotal.fw-bold 0.00
+
+                .row.mb-2
+                  .col-7
+                    small.text-muted تكلفة الشحن:
                   .col-5.text-end
                     span#basePrice.fw-bold 0.00
 
-                .row.mb-2(#fastDeliveryRow style="display: none;")
+                .row.mb-2#fastDeliveryRow(style="display: none;")
                   .col-7
                     small.text-muted توصيل سريع (1.5x):
                   .col-5.text-end
                     span#fastDeliveryPrice.text-warning.fw-bold 0.00
 
-                .row.mb-2(#extraWeightRow style="display: none;")
+                .row.mb-2#extraWeightRow(style="display: none;")
                   .col-7
                     small.text-muted رسوم الوزن الزائد:
                   .col-5.text-end
@@ -230,22 +204,6 @@ block content
               .alert.alert-info.small
                 i.fas.fa-info-circle.me-2
                 span الحالة: <strong>طلب بيك اب</strong> (يتم تعيينها تلقائياً)
-
-          // Items Section
-          .card
-            .card-header.bg-primary.text-white
-              h6.mb-0
-                i.fas.fa-boxes.me-2
-                span المنتجات
-
-            .card-body
-              #itemsList
-                // Items will be added here dynamically
-
-              .mt-3
-                button.btn.btn-outline-primary.w-100(type="button" onclick="addItem()")
-                  i.fas.fa-plus-circle.me-2
-                  span إضافة منتج
 
     // Submit Section
     .row.mt-4
@@ -274,12 +232,16 @@ block content
     function onMerchantChange() {
       const merchantSelect = document.getElementById('merchantSelect');
       if (merchantSelect.value) {
-        document.getElementById('priceGovernorate').focus();
+        document.getElementById('receiverGovernorate').focus();
       }
+      calculateQuote();
     }
 
-    function searchReceiver() {
-      const phone = document.getElementById('receiverPhone').value.trim();
+    // ======================================================
+    // Receiver search (triggered by search icon click)
+    // ======================================================
+    function searchReceiverByPhone() {
+      const phone = document.getElementById('receiverPhone1').value.trim();
 
       if (!phone || phone.length < 5) {
         alert('أدخل رقم هاتف صحيح (5 أرقام على الأقل)');
@@ -289,75 +251,90 @@ block content
       fetch(`/shipments/api/search-receiver?phone=${encodeURIComponent(phone)}`)
       .then(res => res.json())
       .then(data => {
-        if (data.success) {
+        if (data.success && data.receiver) {
           selectedReceiver = data.receiver;
-          showReceiverSearchResult(data.receiver);
-          document.getElementById('manualReceiverForm').style.display = 'none';
+          populateReceiverFields(data.receiver);
         } else {
           selectedReceiver = null;
-          document.getElementById('receiverSearchResult').style.display = 'none';
-          document.getElementById('manualReceiverForm').style.display = 'block';
-          clearManualReceiverForm();
-          // Pre-fill phone
-          document.getElementById('receiverPhone1').value = phone;
-          alert(data.error);
+          // No match found - leave fields for manual entry
+          alert(data.error || 'المستقبل غير موجود، يمكنك إكمال البيانات يدوياً');
         }
       })
       .catch(err => alert('خطأ: ' + err.message));
     }
 
-    function showReceiverSearchResult(receiver) {
-      let html = `
-        <div class="row">
-          <div class="col-md-8">
-            <div>
-              <strong>${receiver.fullName}</strong><br>
-              <small class="text-muted">${receiver.phone1}</small>
-              ${receiver.phone2 ? '<br><small class="text-muted">' + receiver.phone2 + '</small>' : ''}
-              <div class="small mt-2">${receiver.governorate} - ${receiver.city}</div>
-              <div class="small text-muted">${receiver.address}</div>
-            </div>
-          </div>
-          <div class="col-md-4 text-end">
-            <button class="btn btn-sm btn-success" type="button" onclick="selectFoundReceiver()">
-              <i class="fas fa-check me-1"></i>اختر
-            </button>
-          </div>
-        </div>
-      `;
-      document.getElementById('receiverSearchResult').innerHTML = html;
-      document.getElementById('receiverSearchResult').style.display = 'block';
+    function populateReceiverFields(receiver) {
+      document.getElementById('receiverFullName').value = receiver.fullName || '';
+      document.getElementById('receiverPhone1').value = receiver.phone1 || '';
+      document.getElementById('receiverPhone2').value = receiver.phone2 || '';
+      document.getElementById('receiverAddress').value = receiver.address || '';
+      document.getElementById('receiverNotes').value = receiver.notes || '';
+
+      // Populate governorate then cities then city
+      const govSelect = document.getElementById('receiverGovernorate');
+      if (receiver.governorate) {
+        govSelect.value = receiver.governorate;
+        onReceiverGovernorateChange(() => {
+          document.getElementById('receiverCity').value = receiver.city || '';
+          onReceiverCityChange();
+        });
+      }
     }
 
-    function selectFoundReceiver() {
-      if (!selectedReceiver) return;
+    // ======================================================
+    // Governorate / City handling
+    // ======================================================
+    async function onReceiverGovernorateChange(callback) {
+      const select = document.getElementById('receiverGovernorate');
+      const citySelect = document.getElementById('receiverCity');
+      const selectedOption = select.options[select.selectedIndex];
+      const govId = selectedOption ? selectedOption.dataset.id : null;
 
-      // Update location fields from receiver
-      document.getElementById('priceGovernorate').value = selectedReceiver.governorate || '';
-      document.getElementById('priceCity').value = selectedReceiver.city || '';
+      citySelect.innerHTML = '<option value="">-- اختر المدينة --</option>';
 
-      document.getElementById('manualReceiverForm').style.display = 'none';
+      if (govId) {
+        await loadCitiesByGovernorate(govId, citySelect);
+      }
+
+      if (typeof callback === 'function') callback();
+
       calculateQuote();
     }
 
-    function clearManualReceiverForm() {
-      document.getElementById('receiverFullName').value = '';
-      document.getElementById('receiverPhone1').value = '';
-      document.getElementById('receiverPhone2').value = '';
-      document.getElementById('receiverAddress').value = '';
-      document.getElementById('receiverGovernorate').value = '';
-      document.getElementById('receiverCity').value = '';
-      document.getElementById('receiverNotes').value = '';
+    function onReceiverCityChange() {
+      calculateQuote();
     }
 
+    async function loadCitiesByGovernorate(govId, selectElement) {
+      try {
+        const response = await fetch(`/countries/api/cities/${govId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          data.cities.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city.nameAr;
+            option.textContent = city.nameAr;
+            selectElement.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading cities:', error);
+      }
+    }
+
+    // ======================================================
+    // Quote / Total calculation
+    // ======================================================
     function calculateQuote() {
       const merchantId = document.getElementById('merchantSelect').value;
-      const governorate = document.getElementById('priceGovernorate').value;
-      const city = document.getElementById('priceCity').value;
+      const governorate = document.getElementById('receiverGovernorate').value;
+      const city = document.getElementById('receiverCity').value;
       const amountGained = parseFloat(document.getElementById('amountGained').value) || 0;
       const isFastDelivery = document.getElementById('isFastDelivery').checked;
+      const items = getItemsData();
 
-      if (!merchantId || !governorate || !city || amountGained <= 0) {
+      if (!merchantId || !governorate || !city) {
         resetPriceDisplay();
         return;
       }
@@ -370,13 +347,15 @@ block content
           governorate,
           city,
           amountGained,
-          isFastDelivery
+          isFastDelivery,
+          items
         })
       })
       .then(res => res.json())
       .then(data => {
+        console.log(data);
         if (data.success) {
-          displayPriceBreakdown(data.price);
+          displayPriceBreakdown(data);
         } else {
           alert(data.error);
           resetPriceDisplay();
@@ -384,11 +363,12 @@ block content
       })
       .catch(err => {
         console.error('Error:', err);
-        resetPriceDisplay();
+        //- resetPriceDisplay();
       });
     }
 
-    function displayPriceBreakdown(finalPrice) {
+    function displayPriceBreakdown(data) {
+      console.log(document.getElementById('productsTotal'))
       const merchantSelect = document.getElementById('merchantSelect');
       const selectedOption = merchantSelect.options[merchantSelect.selectedIndex];
       const maxWeight = parseFloat(selectedOption.dataset.maxweight) || 0;
@@ -396,46 +376,46 @@ block content
       const amountGained = parseFloat(document.getElementById('amountGained').value) || 0;
       const isFastDelivery = document.getElementById('isFastDelivery').checked;
 
-      // Get price list to calculate base price
-      const governorate = document.getElementById('priceGovernorate').value;
-      const city = document.getElementById('priceCity').value;
-      const merchantId = document.getElementById('merchantSelect').value;
+      // Products total (from backend)
+      document.getElementById('productsTotal').textContent = (data.productsTotal || 0).toFixed(2);
 
-      fetch(`/shipments/api/price-list?merchantId=${merchantId}&governorate=${governorate}&city=${city}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.priceList.length > 0) {
-          let basePrice = parseFloat(data.priceList[0].price);
+      // Shipping cost breakdown
+      // We don't have the raw base price separately, so re-derive base shipping
+      // by reversing fast-delivery + extra weight from shippingCost for display purposes.
+      let shippingCost = data.shippingCost || 0;
 
-          document.getElementById('basePrice').textContent = basePrice.toFixed(2);
+      let extraWeightPrice = 0;
+      if (maxWeight > 0 && amountGained > maxWeight && extraFee > 0) {
+        const excessWeight = amountGained - maxWeight;
+        extraWeightPrice = excessWeight * extraFee;
+      }
 
-          // Fast delivery
-          let fastDeliveryPrice = 0;
-          if (isFastDelivery) {
-            fastDeliveryPrice = basePrice * 0.5; // 1.5x means +50%
-            document.getElementById('fastDeliveryPrice').textContent = fastDeliveryPrice.toFixed(2);
-            document.getElementById('fastDeliveryRow').style.display = 'block';
-          } else {
-            document.getElementById('fastDeliveryRow').style.display = 'none';
-          }
+      let basePriceWithoutExtras = shippingCost - extraWeightPrice;
+      let fastDeliveryPrice = 0;
+      if (isFastDelivery) {
+        // shippingCost already includes 1.5x; basePrice = basePriceWithoutExtras / 1.5
+        const basePrice = basePriceWithoutExtras / 1.5;
+        fastDeliveryPrice = basePrice * 0.5;
+        document.getElementById('basePrice').textContent = basePrice.toFixed(2);
+        document.getElementById('fastDeliveryPrice').textContent = fastDeliveryPrice.toFixed(2);
+        document.getElementById('fastDeliveryRow').style.display = 'flex';
+      } else {
+        document.getElementById('basePrice').textContent = basePriceWithoutExtras.toFixed(2);
+        document.getElementById('fastDeliveryRow').style.display = 'none';
+      }
 
-          // Extra weight
-          let extraWeightPrice = 0;
-          if (maxWeight > 0 && amountGained > maxWeight && extraFee > 0) {
-            const excessWeight = amountGained - maxWeight;
-            extraWeightPrice = excessWeight * extraFee;
-            document.getElementById('extraWeightPrice').textContent = extraWeightPrice.toFixed(2);
-            document.getElementById('extraWeightRow').style.display = 'block';
-          } else {
-            document.getElementById('extraWeightRow').style.display = 'none';
-          }
+      if (extraWeightPrice > 0) {
+        document.getElementById('extraWeightPrice').textContent = extraWeightPrice.toFixed(2);
+        document.getElementById('extraWeightRow').style.display = 'flex';
+      } else {
+        document.getElementById('extraWeightRow').style.display = 'none';
+      }
 
-          document.getElementById('finalPrice').textContent = finalPrice.toFixed(2);
-        }
-      });
+      document.getElementById('finalPrice').textContent = (data.shipmentTotal || 0).toFixed(2);
     }
 
     function resetPriceDisplay() {
+      document.getElementById('productsTotal').textContent = '0.00';
       document.getElementById('basePrice').textContent = '0.00';
       document.getElementById('fastDeliveryPrice').textContent = '0.00';
       document.getElementById('extraWeightPrice').textContent = '0.00';
@@ -444,6 +424,9 @@ block content
       document.getElementById('extraWeightRow').style.display = 'none';
     }
 
+    // ======================================================
+    // Products / Items
+    // ======================================================
     function addItem() {
       itemCounter++;
       const itemHtml = `
@@ -455,7 +438,7 @@ block content
               </div>
               <div class="col-md-4 text-end">
                 <button class="btn btn-sm btn-danger" type="button" onclick="removeItem(${itemCounter})">
-                  <i class="fas fa-trash"></i>
+                  <i class="bi bi-trash"></i>
                 </button>
               </div>
             </div>
@@ -473,8 +456,11 @@ block content
             </div>
 
             <div class="row g-2 mt-2">
-              <div class="col-md-12">
-                <input class="form-control form-control-sm" type="number" min="1" value="1" placeholder="الكمية" data-item="${itemCounter}" data-field="count">
+              <div class="col-md-6">
+                <input class="form-control form-control-sm" type="number" min="1" placeholder="الكمية" data-item="${itemCounter}" data-field="count" oninput="calculateQuote()">
+              </div>
+              <div class="col-md-6">
+                <input class="form-control form-control-sm" type="number" min="0" step="0.01" placeholder="السعر" data-item="${itemCounter}" data-field="price" oninput="calculateQuote()">
               </div>
             </div>
           </div>
@@ -485,6 +471,7 @@ block content
 
     function removeItem(itemId) {
       document.getElementById(`item-${itemId}`).remove();
+      calculateQuote();
     }
 
     function getItemsData() {
@@ -502,6 +489,9 @@ block content
       return items;
     }
 
+    // ======================================================
+    // Submit
+    // ======================================================
     function submitForm() {
       // Validate merchant
       const merchantId = document.getElementById('merchantSelect').value;
@@ -510,34 +500,21 @@ block content
         return;
       }
 
-      // Validate location
-      const governorate = document.getElementById('priceGovernorate').value;
-      const city = document.getElementById('priceCity').value;
+      // Validate receiver location
+      const governorate = document.getElementById('receiverGovernorate').value;
+      const city = document.getElementById('receiverCity').value;
       if (!governorate || !city) {
         alert('أدخل المحافظة والمدينة');
         return;
       }
 
-      // Get or validate receiver
-      let receiverId;
-      if (selectedReceiver) {
-        receiverId = selectedReceiver.id;
-      } else {
-        // Validate manual receiver form
-        const fullName = document.getElementById('receiverFullName').value;
-        const phone1 = document.getElementById('receiverPhone1').value;
-        const address = document.getElementById('receiverAddress').value;
-        const recGovernorate = document.getElementById('receiverGovernorate').value;
-        const recCity = document.getElementById('receiverCity').value;
+      // Validate receiver fields
+      const fullName = document.getElementById('receiverFullName').value;
+      const phone1 = document.getElementById('receiverPhone1').value;
+      const address = document.getElementById('receiverAddress').value;
 
-        if (!fullName || !phone1 || !address || !recGovernorate || !recCity) {
-          alert('أكمل بيانات المستقبل');
-          return;
-        }
-
-        // For now, we'll need to create receiver first or get ID
-        // This requires additional backend logic
-        alert('يجب اختيار مستقبل موجود أو سيتم إضافة الخاصية لإنشاء مستقبل جديد');
+      if (!fullName || !phone1 || !address) {
+        alert('أكمل بيانات المستقبل');
         return;
       }
 
@@ -557,7 +534,7 @@ block content
 
       // Get total amount (from displayed price)
       const totalAmount = parseFloat(document.getElementById('finalPrice').textContent);
-      if (totalAmount <= 0) {
+      if (!totalAmount || totalAmount <= 0) {
         alert('احسب التسعيرة أولاً');
         return;
       }
@@ -565,7 +542,18 @@ block content
       // Prepare data
       const shipmentData = {
         merchantId,
-        receiverId,
+        receiverId: selectedReceiver ? selectedReceiver.id : null,
+        receiver: {
+          fullName,
+          phone1,
+          phone2: document.getElementById('receiverPhone2').value || null,
+          address,
+          governorate,
+          city,
+          notes: document.getElementById('receiverNotes').value || null
+        },
+        governorate,
+        city,
         policyNumber: document.getElementById('policyNumber').value || null,
         isOpenable: document.getElementById('isOpenable').checked,
         isFastDelivery: document.getElementById('isFastDelivery').checked,
@@ -597,40 +585,30 @@ block content
       const alertDiv = document.createElement('div');
       alertDiv.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
       alertDiv.innerHTML = `
-        <i class="fas fa-${type === 'error' ? 'times-circle' : 'check-circle'} me-2"></i>
+        <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'} me-2"></i>
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       `;
-      document.body.insertAdjacentElement('afterbegin', alertDiv);
-      setTimeout(() => alertDiv.remove(), 5000);
+      document.body.insertBefore(alertDiv, document.body.firstChild);
+      setTimeout(() => alertDiv.remove(), 4000);
     }
 
-    // Initialize governorates and cities
-    let governoratesMap = {};
-
+    // ======================================================
+    // Init
+    // ======================================================
     async function initializeGovernorates() {
       try {
         const response = await fetch('/countries/api/governorates-dropdown');
         const data = await response.json();
-        
+
         if (data.success) {
-          const receiverGovSelect = document.getElementById('receiverGovernorate');
-          const priceGovSelect = document.getElementById('priceGovernorate');
-          
+          const govSelect = document.getElementById('receiverGovernorate');
           data.data.forEach(gov => {
-            governoratesMap[gov.id] = gov;
-            
-            const option1 = document.createElement('option');
-            option1.value = gov.nameAr;
-            option1.textContent = gov.nameAr;
-            option1.dataset.id = gov.id;
-            receiverGovSelect.appendChild(option1);
-            
-            const option2 = document.createElement('option');
-            option2.value = gov.nameAr;
-            option2.textContent = gov.nameAr;
-            option2.dataset.id = gov.id;
-            priceGovSelect.appendChild(option2);
+            const option = document.createElement('option');
+            option.value = gov.nameAr;
+            option.textContent = gov.nameAr;
+            option.dataset.id = gov.id;
+            govSelect.appendChild(option);
           });
         }
       } catch (error) {
@@ -638,55 +616,7 @@ block content
       }
     }
 
-    function onReceiverGovernorateChange() {
-      const select = document.getElementById('receiverGovernorate');
-      const citySelect = document.getElementById('receiverCity');
-      const selectedOption = select.options[select.selectedIndex];
-      const govId = selectedOption.dataset.id;
-      
-      citySelect.innerHTML = '<option value="">-- اختر المدينة --</option>';
-      
-      if (govId) {
-        loadCitiesByGovernorate(govId, citySelect);
-      }
-    }
-
-    function onPriceGovernorateChange() {
-      const select = document.getElementById('priceGovernorate');
-      const citySelect = document.getElementById('priceCity');
-      const selectedOption = select.options[select.selectedIndex];
-      const govId = selectedOption.dataset.id;
-      
-      citySelect.innerHTML = '<option value="">-- اختر المدينة --</option>';
-      
-      if (govId) {
-        loadCitiesByGovernorate(govId, citySelect);
-      }
-    }
-
-    async function loadCitiesByGovernorate(govId, selectElement) {
-      try {
-        const response = await fetch(`/countries/api/cities/${govId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-          data.cities.forEach(city => {
-            const option = document.createElement('option');
-            option.value = city.nameAr;
-            option.textContent = city.nameAr;
-            selectElement.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error('Error loading cities:', error);
-      }
-    }
-
-    // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
       initializeGovernorates();
+      addItem();
     });
-
-    // Initialize with one empty item
-    addItem();
-  

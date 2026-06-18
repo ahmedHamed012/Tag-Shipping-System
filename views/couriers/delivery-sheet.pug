@@ -51,7 +51,7 @@ html(lang="ar" dir="rtl")
 
     .meta
       .line
-        strong اسم الساعي:
+        strong اسم المندوب:
         |  #{courier.fullName}
       .line
         strong الهاتف:
@@ -71,20 +71,20 @@ html(lang="ar" dir="rtl")
             |  #{shipment.policyNumber || ('SH-' + shipment.id)}
           .line
             strong اسم المستلم:
-            |  #{shipment.receiver?.fullName || '-'}
+            |  #{shipment.receiver && shipment.receiver.fullName ? shipment.receiver.fullName : '-'}
           .line
             strong العنوان:
-            |  #{shipment.receiver?.address || '-'}
+            |  #{shipment.receiver && shipment.receiver.address ? shipment.receiver.address : '-'}
           .line
             strong الهاتف:
-            |  #{shipment.receiver?.phone1 || '-'}
+            |  #{shipment.receiver && shipment.receiver.phone1 ? shipment.receiver.phone1 : '-'}
           .line
             strong المبلغ:
-            |  #{shipment.totalAmount} ر.س
+            |  #{shipment.totalAmount} ج.م
           .line
             strong الحالة:
             |  #{shipment.shipmentStatus}
           if index < shipments.length - 1
             .divider
     else
-      .empty لا توجد شحنات مسندة اليوم لهذا الساعي
+      .empty لا توجد شحنات مسندة اليوم لهذا المندوب
