@@ -80,6 +80,10 @@ app.use("/merchants", requireAuth, merchantsRoutes);
 const shipmentsRoutes = require("./routes/shipments.routes");
 app.use("/shipments", requireAuth, shipmentsRoutes);
 
+// Returned shipments page
+const { getReturnedShipments } = require("./controllers/shipments.controller");
+app.get("/returned-shipments", requireAuth, getReturnedShipments);
+
 // Countries/Governorates module routes
 const countriesRoutes = require("./routes/countries.routes");
 app.use("/countries", requireAuth, countriesRoutes);

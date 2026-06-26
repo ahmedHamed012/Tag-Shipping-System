@@ -13,11 +13,6 @@ router.get("/", shipmentsController.getAllShipments);
 router.get("/create", shipmentsController.createShipmentForm);
 
 /**
- * GET /shipments/:id - Shipment detail page
- */
-router.get("/:id", shipmentsController.getShipmentPage);
-
-/**
  * PUT /shipments/api/update/:id - Update shipment general data
  */
 router.put("/api/update/:id", shipmentsController.updateShipment);
@@ -71,5 +66,15 @@ router.get("/api/price-list", shipmentsController.getPriceList);
  * PATCH /shipments/api/update-total/:id - Manually override total amount
  */
 router.patch("/api/update-total/:id", shipmentsController.updateTotalAmount);
+
+/**
+ * POST /shipments/api/unassign/:id - Unassign delivery courier, reset status to "تم الاستقبال"
+ */
+router.post("/api/unassign/:id", shipmentsController.unassignDeliveryShipment);
+
+/**
+ * GET /shipments/:id - Shipment detail page (catch-all, must be last)
+ */
+router.get("/:id", shipmentsController.getShipmentPage);
 
 module.exports = router;

@@ -2,50 +2,66 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const STATUS = {
-  PICKUP_REQUESTED:      'طلب بيك اب',
-  RECEIVED_AT_WAREHOUSE: 'تم الاستقبال',
-  OUT_FOR_DELIVERY:      'قيد التوصيل',
-  DELIVERED:             'تم التوصيل',
-  PARTIALLY_DELIVERED:   'تسليم جزئي',
-  REPLACEMENT:           'استبدال',
-  RETURNED_SHIPPING_PAID:'مرتجع مع دفع الشحن',
-  REFUSED_SHIPPING_PAID: 'رفض التسليم مع دفع الشحن',
-  CANCELLED:             'ملغاة',
-  POSTPONED:             'مؤجل',
-  RETURNED_TO_WAREHOUSE: 'مرتجع للمستودع',
-  RETURNED:              'مرتجع',
-  RETURNED_TO_MERCHANT:  'مرتجع للتاجر',
-  PARTIAL_RETURN:        'مرتجع جزئي',
-  REPLACEMENT_RETURN:    'مرتجع استبدال',
+  PICKUP_REQUESTED: "طلب بيك اب",
+  RECEIVED_AT_WAREHOUSE: "تم الاستقبال",
+  OUT_FOR_DELIVERY: "قيد التوصيل",
+  DELIVERED: "تم التوصيل",
+  PARTIALLY_DELIVERED: "تسليم جزئي",
+  REPLACEMENT: "استبدال",
+  RETURNED_SHIPPING_PAID: "مرتجع مع دفع الشحن",
+  REFUSED_SHIPPING_PAID: "رفض التسليم مع دفع الشحن",
+  CANCELLED: "ملغاة",
+  POSTPONED: "مؤجل",
+  RETURNED_TO_WAREHOUSE: "مرتجع للمستودع",
+  RETURNED: "مرتجع",
+  RETURNED_TO_MERCHANT: "مرتجع للتاجر",
+  PARTIAL_RETURN: "مرتجع جزئي",
+  REPLACEMENT_RETURN: "مرتجع استبدال",
 };
 
 const ALLOWED_TRANSITIONS = {
-  [STATUS.PICKUP_REQUESTED]:      [STATUS.RECEIVED_AT_WAREHOUSE],
+  [STATUS.PICKUP_REQUESTED]: [STATUS.RECEIVED_AT_WAREHOUSE],
   [STATUS.RECEIVED_AT_WAREHOUSE]: [STATUS.OUT_FOR_DELIVERY, STATUS.CANCELLED],
-  [STATUS.OUT_FOR_DELIVERY]:      [STATUS.DELIVERED, STATUS.PARTIALLY_DELIVERED, STATUS.REPLACEMENT,
-                                   STATUS.RETURNED_SHIPPING_PAID, STATUS.REFUSED_SHIPPING_PAID, STATUS.POSTPONED],
-  [STATUS.DELIVERED]:             [],
-  [STATUS.PARTIALLY_DELIVERED]:   [],
-  [STATUS.REPLACEMENT]:           [],
-  [STATUS.RETURNED_SHIPPING_PAID]:[STATUS.RECEIVED_AT_WAREHOUSE],
+  [STATUS.OUT_FOR_DELIVERY]: [
+    STATUS.DELIVERED,
+    STATUS.PARTIALLY_DELIVERED,
+    STATUS.REPLACEMENT,
+    STATUS.RETURNED_SHIPPING_PAID,
+    STATUS.REFUSED_SHIPPING_PAID,
+    STATUS.POSTPONED,
+  ],
+  [STATUS.DELIVERED]: [],
+  [STATUS.PARTIALLY_DELIVERED]: [],
+  [STATUS.REPLACEMENT]: [],
+  [STATUS.RETURNED_SHIPPING_PAID]: [STATUS.RECEIVED_AT_WAREHOUSE],
   [STATUS.REFUSED_SHIPPING_PAID]: [STATUS.RETURNED_TO_WAREHOUSE],
-  [STATUS.CANCELLED]:             [],
-  [STATUS.POSTPONED]:             [STATUS.RETURNED_TO_WAREHOUSE],
-  [STATUS.RETURNED_TO_WAREHOUSE]: [STATUS.RETURNED, STATUS.RETURNED_TO_MERCHANT],
-  [STATUS.RETURNED]:              [],
-  [STATUS.RETURNED_TO_MERCHANT]:  [],
-  [STATUS.PARTIAL_RETURN]:        [STATUS.RETURNED_TO_WAREHOUSE],
-  [STATUS.REPLACEMENT_RETURN]:    [STATUS.RECEIVED_AT_WAREHOUSE],
+  [STATUS.CANCELLED]: [],
+  [STATUS.POSTPONED]: [STATUS.RETURNED_TO_WAREHOUSE],
+  [STATUS.RETURNED_TO_WAREHOUSE]: [
+    STATUS.RETURNED,
+    STATUS.RETURNED_TO_MERCHANT,
+  ],
+  [STATUS.RETURNED]: [],
+  [STATUS.RETURNED_TO_MERCHANT]: [],
+  [STATUS.PARTIAL_RETURN]: [STATUS.RETURNED_TO_WAREHOUSE],
+  [STATUS.REPLACEMENT_RETURN]: [STATUS.RECEIVED_AT_WAREHOUSE],
 };
 
 // Transitions TO Received-at-Warehouse that require specifying a pickup courier
-const REQUIRES_PICKUP_COURIER = [STATUS.RETURNED_SHIPPING_PAID, STATUS.REPLACEMENT_RETURN];
+const REQUIRES_PICKUP_COURIER = [
+  STATUS.RETURNED_SHIPPING_PAID,
+  STATUS.REPLACEMENT_RETURN,
+];
 
 // Transition TO Out-for-Delivery requires specifying a delivery courier
 const REQUIRES_DELIVERY_COURIER = [STATUS.RECEIVED_AT_WAREHOUSE];
 
 // Statuses that require extra data and cannot be set via bulk update
-const BULK_BLOCKED_STATUSES = [STATUS.PARTIALLY_DELIVERED, STATUS.REPLACEMENT, STATUS.RETURNED_SHIPPING_PAID];
+const BULK_BLOCKED_STATUSES = [
+  STATUS.PARTIALLY_DELIVERED,
+  STATUS.REPLACEMENT,
+  STATUS.RETURNED_SHIPPING_PAID,
+];
 
 exports.STATUS = STATUS;
 exports.ALLOWED_TRANSITIONS = ALLOWED_TRANSITIONS;
@@ -83,9 +99,15 @@ exports.getAllShipments = async (req, res) => {
       ...(status && { shipmentStatus: status }),
       ...(merchantId && { merchantId }),
       ...(courierId && { courierId: parseInt(courierId) }),
-      ...(customerName && { receiver: { fullName: { contains: customerName } } }),
-      ...(customerPhone && { receiver: { phone1: { contains: customerPhone } } }),
-      ...(governorate && { receiver: { governorate: { contains: governorate } } }),
+      ...(customerName && {
+        receiver: { fullName: { contains: customerName } },
+      }),
+      ...(customerPhone && {
+        receiver: { phone1: { contains: customerPhone } },
+      }),
+      ...(governorate && {
+        receiver: { governorate: { contains: governorate } },
+      }),
       ...(area && { receiver: { city: { contains: area } } }),
       ...((dateFrom || dateTo) && {
         createdAt: {
@@ -102,7 +124,13 @@ exports.getAllShipments = async (req, res) => {
         include: {
           merchant: { select: { id: true, name: true, phone: true } },
           receiver: {
-            select: { id: true, fullName: true, phone1: true, governorate: true, city: true },
+            select: {
+              id: true,
+              fullName: true,
+              phone1: true,
+              governorate: true,
+              city: true,
+            },
           },
           courier: { select: { id: true, fullName: true, phone: true } },
           items: { select: { id: true, productName: true, count: true } },
@@ -278,9 +306,11 @@ exports.calculateQuote = async (req, res) => {
     const maxWeightNum = parseFloat(merchant.maxShipmentWeight) || 0;
     const extraFeeNum = parseFloat(merchant.extraWeightFeePerKg) || 0;
 
+    let extraWeightFee = 0;
     if (maxWeightNum > 0 && amountGainedNum > maxWeightNum && extraFeeNum > 0) {
       const excessWeight = amountGainedNum - maxWeightNum;
-      shippingCost += excessWeight * extraFeeNum;
+      extraWeightFee = excessWeight * extraFeeNum;
+      shippingCost += extraWeightFee;
     }
 
     // Calculate products total from items (price * count)
@@ -298,6 +328,7 @@ exports.calculateQuote = async (req, res) => {
     res.json({
       success: true,
       shippingCost: parseFloat(shippingCost.toFixed(2)),
+      extraWeightFee: parseFloat(extraWeightFee.toFixed(2)),
       productsTotal: parseFloat(productsTotal.toFixed(2)),
       price: parseFloat(shipmentTotal.toFixed(2)), // kept for backward compatibility
       shipmentTotal: parseFloat(shipmentTotal.toFixed(2)),
@@ -326,6 +357,8 @@ exports.createShipment = async (req, res) => {
       governorate,
       city,
       totalAmount,
+      shippingCost,
+      extraWeightFee,
     } = req.body;
 
     console.log("Request body for creating shipment:", req.body);
@@ -402,6 +435,14 @@ exports.createShipment = async (req, res) => {
         isFastDelivery: isFastDelivery,
         shipmentStatus: "طلب بيك اب", // Initial status
         totalAmount: parseFloat(totalAmount.toFixed(2)),
+        shippingCost:
+          shippingCost != null
+            ? parseFloat(parseFloat(shippingCost).toFixed(2))
+            : null,
+        extraWeightFee:
+          extraWeightFee != null
+            ? parseFloat(parseFloat(extraWeightFee).toFixed(2))
+            : null,
         amountGained: parseFloat(amountGained) || 0,
         additionalNotes: additionalNotes || null,
         createdBy: req.user?.id || null,
@@ -518,22 +559,39 @@ exports.updateShipmentStatus = async (req, res) => {
 
     // Status 5 (Partially Delivered): requires collected amount
     if (shipmentStatus === STATUS.PARTIALLY_DELIVERED) {
-      if (collectedAmount === undefined || collectedAmount === null || collectedAmount === '') {
-        return res.json({ success: false, error: "أدخل المبلغ المحصل من العميل" });
+      if (
+        collectedAmount === undefined ||
+        collectedAmount === null ||
+        collectedAmount === ""
+      ) {
+        return res.json({
+          success: false,
+          error: "أدخل المبلغ المحصل من العميل",
+        });
       }
       updateData.deliveryCollectedAmount = parseFloat(collectedAmount);
     }
 
     // Status 7 (Returned with Shipping Fee Paid): requires shipping amount collected
     if (shipmentStatus === STATUS.RETURNED_SHIPPING_PAID) {
-      if (collectedAmount === undefined || collectedAmount === null || collectedAmount === '') {
-        return res.json({ success: false, error: "أدخل مبلغ الشحن المحصل من العميل" });
+      if (
+        collectedAmount === undefined ||
+        collectedAmount === null ||
+        collectedAmount === ""
+      ) {
+        return res.json({
+          success: false,
+          error: "أدخل مبلغ الشحن المحصل من العميل",
+        });
       }
       updateData.deliveryCollectedAmount = parseFloat(collectedAmount);
     }
 
     // Transitioning to Received-at-Warehouse from statuses that need a pickup courier
-    if (shipmentStatus === STATUS.RECEIVED_AT_WAREHOUSE && REQUIRES_PICKUP_COURIER.includes(shipment.shipmentStatus)) {
+    if (
+      shipmentStatus === STATUS.RECEIVED_AT_WAREHOUSE &&
+      REQUIRES_PICKUP_COURIER.includes(shipment.shipmentStatus)
+    ) {
       if (!courierId) {
         return res.json({ success: false, error: "حدد مندوب الاستلام" });
       }
@@ -549,23 +607,29 @@ exports.updateShipmentStatus = async (req, res) => {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.shipment.update({ where: { id: parseInt(id) }, data: updateData });
+      await tx.shipment.update({
+        where: { id: parseInt(id) },
+        data: updateData,
+      });
 
       // Status 5: auto-create child shipment with policyNumber-P and status 14
       if (shipmentStatus === STATUS.PARTIALLY_DELIVERED) {
         const collected = parseFloat(collectedAmount);
-        const remaining = Math.max(0, parseFloat(shipment.totalAmount) - collected);
+        const remaining = Math.max(
+          0,
+          parseFloat(shipment.totalAmount) - collected,
+        );
         const child = await tx.shipment.create({
           data: {
             merchantId: shipment.merchantId,
             receiverId: shipment.receiverId,
             courierId: shipment.courierId,
             parentShipmentId: shipment.id,
-            policyNumber: (shipment.policyNumber || `SH-${shipment.id}`) + '-P',
+            policyNumber: (shipment.policyNumber || `SH-${shipment.id}`) + "-P",
             isOpenable: shipment.isOpenable,
             isFastDelivery: shipment.isFastDelivery,
             shipmentStatus: STATUS.PARTIAL_RETURN,
-            shipmentType: 'partial_return',
+            shipmentType: "partial_return",
             totalAmount: remaining,
             amountGained: 0,
             additionalNotes: shipment.additionalNotes,
@@ -596,11 +660,11 @@ exports.updateShipmentStatus = async (req, res) => {
             receiverId: shipment.receiverId,
             courierId: shipment.courierId,
             parentShipmentId: shipment.id,
-            policyNumber: (shipment.policyNumber || `SH-${shipment.id}`) + '-R',
+            policyNumber: (shipment.policyNumber || `SH-${shipment.id}`) + "-R",
             isOpenable: shipment.isOpenable,
             isFastDelivery: shipment.isFastDelivery,
             shipmentStatus: STATUS.REPLACEMENT_RETURN,
-            shipmentType: 'replacement_return',
+            shipmentType: "replacement_return",
             totalAmount: 0,
             amountGained: 0,
             additionalNotes: shipment.additionalNotes,
@@ -692,12 +756,21 @@ exports.getShipmentByBarcode = async (req, res) => {
       where: { policyNumber: barcode, isDeleted: false },
       include: {
         merchant: { select: { id: true, name: true } },
-        receiver: { select: { id: true, fullName: true, phone1: true, governorate: true, city: true } },
+        receiver: {
+          select: {
+            id: true,
+            fullName: true,
+            phone1: true,
+            governorate: true,
+            city: true,
+          },
+        },
         courier: { select: { id: true, fullName: true } },
       },
     });
 
-    if (!shipment) return res.json({ success: false, error: "لم يتم العثور على الشحنة" });
+    if (!shipment)
+      return res.json({ success: false, error: "لم يتم العثور على الشحنة" });
     res.json({ success: true, shipment });
   } catch (error) {
     console.error("Error fetching shipment by barcode:", error);
@@ -722,7 +795,8 @@ exports.bulkUpdateStatus = async (req, res) => {
     if (BULK_BLOCKED_STATUSES.includes(shipmentStatus)) {
       return res.json({
         success: false,
-        error: "هذه الحالة تتطلب بيانات إضافية. استخدم التحديث الفردي لكل شحنة.",
+        error:
+          "هذه الحالة تتطلب بيانات إضافية. استخدم التحديث الفردي لكل شحنة.",
       });
     }
 
@@ -731,9 +805,14 @@ exports.bulkUpdateStatus = async (req, res) => {
       select: { id: true, shipmentStatus: true },
     });
 
-    const invalid = shipments.filter(s => !(ALLOWED_TRANSITIONS[s.shipmentStatus] || []).includes(shipmentStatus));
+    const invalid = shipments.filter(
+      (s) =>
+        !(ALLOWED_TRANSITIONS[s.shipmentStatus] || []).includes(shipmentStatus),
+    );
     if (invalid.length > 0) {
-      const details = invalid.map(s => `#${s.id} (${s.shipmentStatus})`).join('، ');
+      const details = invalid
+        .map((s) => `#${s.id} (${s.shipmentStatus})`)
+        .join("، ");
       return res.json({
         success: false,
         error: `انتقال غير مسموح به للشحنات التالية: ${details}`,
@@ -756,7 +835,10 @@ exports.bulkUpdateStatus = async (req, res) => {
       },
     });
 
-    res.json({ success: true, message: `تم تحديث ${shipmentIds.length} شحنة بنجاح` });
+    res.json({
+      success: true,
+      message: `تم تحديث ${shipmentIds.length} شحنة بنجاح`,
+    });
   } catch (error) {
     console.error("Error bulk updating shipments:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -796,6 +878,111 @@ exports.getPriceList = async (req, res) => {
 };
 
 /**
+ * Returned shipments page — all return-related statuses
+ */
+exports.getReturnedShipments = async (req, res) => {
+  try {
+    const RETURNED_STATUSES = [
+      STATUS.RETURNED,
+      STATUS.RETURNED_TO_MERCHANT,
+      STATUS.RETURNED_TO_WAREHOUSE,
+      STATUS.PARTIAL_RETURN,
+      STATUS.REPLACEMENT_RETURN,
+      STATUS.RETURNED_SHIPPING_PAID,
+      STATUS.REFUSED_SHIPPING_PAID,
+    ];
+
+    const page       = parseInt(req.query.page)  || 1;
+    const limit      = parseInt(req.query.limit) || 20;
+    const search     = req.query.search     || "";
+    const status     = req.query.status     || "";
+    const merchantId = req.query.merchantId || "";
+    const courierId  = req.query.courierId  || "";
+    const dateFrom   = req.query.dateFrom   || "";
+    const dateTo     = req.query.dateTo     || "";
+    const skip       = (page - 1) * limit;
+
+    const where = {
+      isDeleted: false,
+      shipmentStatus: status
+        ? { equals: status }
+        : { in: RETURNED_STATUSES },
+      ...(search && {
+        OR: [
+          { policyNumber: { contains: search } },
+          { receiver: { fullName: { contains: search } } },
+          { receiver: { phone1: { contains: search } } },
+          { merchant: { name: { contains: search } } },
+        ],
+      }),
+      ...(merchantId && { merchantId }),
+      ...(courierId  && { courierId: parseInt(courierId) }),
+      ...((dateFrom || dateTo) && {
+        updatedAt: {
+          ...(dateFrom && { gte: new Date(dateFrom) }),
+          ...(dateTo   && { lte: new Date(dateTo + "T23:59:59.999Z") }),
+        },
+      }),
+    };
+
+    const [total, shipments, statusCounts, merchants, couriers] = await Promise.all([
+      prisma.shipment.count({ where }),
+      prisma.shipment.findMany({
+        where,
+        include: {
+          merchant:  { select: { id: true, name: true } },
+          receiver:  { select: { fullName: true, phone1: true, governorate: true, city: true } },
+          courier:   { select: { id: true, fullName: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      // count per status for the stat cards
+      prisma.shipment.groupBy({
+        by: ["shipmentStatus"],
+        where: { isDeleted: false, shipmentStatus: { in: RETURNED_STATUSES } },
+        _count: { id: true },
+      }),
+      prisma.merchant.findMany({
+        where: { isDeleted: false, isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.courier.findMany({
+        where: { isDeleted: false, isActive: true },
+        select: { id: true, fullName: true },
+        orderBy: { fullName: "asc" },
+      }),
+    ]);
+
+    const countMap = {};
+    statusCounts.forEach(r => { countMap[r.shipmentStatus] = r._count.id; });
+
+    res.render("Shipments/returned", {
+      shipments,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      total,
+      limit,
+      search,
+      status,
+      merchantId,
+      courierId,
+      dateFrom,
+      dateTo,
+      merchants,
+      couriers,
+      countMap,
+      RETURNED_STATUSES,
+    });
+  } catch (error) {
+    console.error("Error fetching returned shipments:", error);
+    res.status(500).render("error", { error: error.message });
+  }
+};
+
+/**
  * Manually override a shipment's total amount
  */
 exports.updateTotalAmount = async (req, res) => {
@@ -803,7 +990,11 @@ exports.updateTotalAmount = async (req, res) => {
     const { id } = req.params;
     const { totalAmount } = req.body;
 
-    if (totalAmount === undefined || totalAmount === null || totalAmount === "") {
+    if (
+      totalAmount === undefined ||
+      totalAmount === null ||
+      totalAmount === ""
+    ) {
       return res.json({ success: false, error: "أدخل المبلغ الإجمالي" });
     }
 
@@ -812,7 +1003,9 @@ exports.updateTotalAmount = async (req, res) => {
       return res.json({ success: false, error: "قيمة غير صحيحة" });
     }
 
-    const shipment = await prisma.shipment.findUnique({ where: { id: parseInt(id) } });
+    const shipment = await prisma.shipment.findUnique({
+      where: { id: parseInt(id) },
+    });
     if (!shipment || shipment.isDeleted) {
       return res.json({ success: false, error: "الشحنة غير موجودة" });
     }
@@ -822,9 +1015,54 @@ exports.updateTotalAmount = async (req, res) => {
       data: { totalAmount: parsed, lastModifiedBy: req.user?.id || null },
     });
 
-    res.json({ success: true, message: "تم تحديث المبلغ الإجمالي", totalAmount: parsed });
+    res.json({
+      success: true,
+      message: "تم تحديث المبلغ الإجمالي",
+      totalAmount: parsed,
+    });
   } catch (error) {
     console.error("Error updating total amount:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+/**
+ * Unassign a delivery courier from a shipment and roll back to "تم الاستقبال"
+ */
+exports.unassignDeliveryShipment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const shipment = await prisma.shipment.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!shipment || shipment.isDeleted) {
+      return res.json({ success: false, error: "الشحنة غير موجودة" });
+    }
+
+    if (shipment.shipmentStatus !== STATUS.OUT_FOR_DELIVERY) {
+      return res.json({
+        success: false,
+        error: `لا يمكن إلغاء التعيين إلا للشحنات بحالة "قيد التوصيل"`,
+      });
+    }
+
+    await prisma.shipment.update({
+      where: { id: parseInt(id) },
+      data: {
+        courierId: null,
+        shipmentStatus: STATUS.RECEIVED_AT_WAREHOUSE,
+        lastModifiedBy: req.user?.id || null,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "تم إلغاء تعيين المندوب وإعادة الشحنة لحالة تم الاستقبال",
+    });
+  } catch (error) {
+    console.error("Error unassigning delivery shipment:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -848,32 +1086,37 @@ exports.getShipmentPage = async (req, res) => {
         parentShipment: { select: { id: true, policyNumber: true } },
         childShipments: {
           where: { isDeleted: false },
-          select: { id: true, policyNumber: true, shipmentStatus: true, shipmentType: true },
+          select: {
+            id: true,
+            policyNumber: true,
+            shipmentStatus: true,
+            shipmentType: true,
+          },
         },
       },
     });
 
     if (!shipment) {
-      return res.status(404).render('error', { error: 'الشحنة غير موجودة' });
+      return res.status(404).render("error", { error: "الشحنة غير موجودة" });
     }
 
     const [logs, couriers] = await Promise.all([
       prisma.log.findMany({
-        where: { entity: 'Shipment', entityId: parseInt(id) },
+        where: { entity: "Shipment", entityId: parseInt(id) },
         include: { user: { select: { id: true, fullName: true } } },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: "asc" },
       }),
       prisma.courier.findMany({
         where: { isDeleted: false, isActive: true },
         select: { id: true, fullName: true, courierType: true },
-        orderBy: { fullName: 'asc' },
+        orderBy: { fullName: "asc" },
       }),
     ]);
 
-    res.render('Shipments/detail', { shipment, logs, couriers });
+    res.render("Shipments/detail", { shipment, logs, couriers });
   } catch (error) {
-    console.error('Error fetching shipment detail:', error);
-    res.status(500).render('error', { error: error.message });
+    console.error("Error fetching shipment detail:", error);
+    res.status(500).render("error", { error: error.message });
   }
 };
 
@@ -899,7 +1142,7 @@ exports.updateShipment = async (req, res) => {
     });
 
     if (!shipment) {
-      return res.json({ success: false, error: 'الشحنة غير موجودة' });
+      return res.json({ success: false, error: "الشحنة غير موجودة" });
     }
 
     const changedFields = {};
@@ -907,36 +1150,141 @@ exports.updateShipment = async (req, res) => {
     await prisma.$transaction(async (tx) => {
       if (receiver) {
         const receiverUpdate = {};
-        if (receiver.fullName !== undefined && receiver.fullName !== shipment.receiver.fullName) { receiverUpdate.fullName = receiver.fullName; changedFields.fullName = { from: shipment.receiver.fullName, to: receiver.fullName }; }
-        if (receiver.phone1 !== undefined && receiver.phone1 !== shipment.receiver.phone1) { receiverUpdate.phone1 = receiver.phone1; changedFields.phone1 = { from: shipment.receiver.phone1, to: receiver.phone1 }; }
-        if (receiver.phone2 !== undefined && receiver.phone2 !== shipment.receiver.phone2) { receiverUpdate.phone2 = receiver.phone2; changedFields.phone2 = { from: shipment.receiver.phone2, to: receiver.phone2 }; }
-        if (receiver.address !== undefined && receiver.address !== shipment.receiver.address) { receiverUpdate.address = receiver.address; changedFields.address = { from: shipment.receiver.address, to: receiver.address }; }
-        if (receiver.governorate !== undefined && receiver.governorate !== shipment.receiver.governorate) { receiverUpdate.governorate = receiver.governorate; changedFields.governorate = { from: shipment.receiver.governorate, to: receiver.governorate }; }
-        if (receiver.city !== undefined && receiver.city !== shipment.receiver.city) { receiverUpdate.city = receiver.city; changedFields.city = { from: shipment.receiver.city, to: receiver.city }; }
-        if (receiver.notes !== undefined && receiver.notes !== shipment.receiver.notes) { receiverUpdate.notes = receiver.notes; changedFields.receiverNotes = { from: shipment.receiver.notes, to: receiver.notes }; }
+        if (
+          receiver.fullName !== undefined &&
+          receiver.fullName !== shipment.receiver.fullName
+        ) {
+          receiverUpdate.fullName = receiver.fullName;
+          changedFields.fullName = {
+            from: shipment.receiver.fullName,
+            to: receiver.fullName,
+          };
+        }
+        if (
+          receiver.phone1 !== undefined &&
+          receiver.phone1 !== shipment.receiver.phone1
+        ) {
+          receiverUpdate.phone1 = receiver.phone1;
+          changedFields.phone1 = {
+            from: shipment.receiver.phone1,
+            to: receiver.phone1,
+          };
+        }
+        if (
+          receiver.phone2 !== undefined &&
+          receiver.phone2 !== shipment.receiver.phone2
+        ) {
+          receiverUpdate.phone2 = receiver.phone2;
+          changedFields.phone2 = {
+            from: shipment.receiver.phone2,
+            to: receiver.phone2,
+          };
+        }
+        if (
+          receiver.address !== undefined &&
+          receiver.address !== shipment.receiver.address
+        ) {
+          receiverUpdate.address = receiver.address;
+          changedFields.address = {
+            from: shipment.receiver.address,
+            to: receiver.address,
+          };
+        }
+        if (
+          receiver.governorate !== undefined &&
+          receiver.governorate !== shipment.receiver.governorate
+        ) {
+          receiverUpdate.governorate = receiver.governorate;
+          changedFields.governorate = {
+            from: shipment.receiver.governorate,
+            to: receiver.governorate,
+          };
+        }
+        if (
+          receiver.city !== undefined &&
+          receiver.city !== shipment.receiver.city
+        ) {
+          receiverUpdate.city = receiver.city;
+          changedFields.city = {
+            from: shipment.receiver.city,
+            to: receiver.city,
+          };
+        }
+        if (
+          receiver.notes !== undefined &&
+          receiver.notes !== shipment.receiver.notes
+        ) {
+          receiverUpdate.notes = receiver.notes;
+          changedFields.receiverNotes = {
+            from: shipment.receiver.notes,
+            to: receiver.notes,
+          };
+        }
 
         if (Object.keys(receiverUpdate).length > 0) {
           receiverUpdate.lastModifiedBy = req.user?.id || null;
-          await tx.receiver.update({ where: { id: shipment.receiverId }, data: receiverUpdate });
+          await tx.receiver.update({
+            where: { id: shipment.receiverId },
+            data: receiverUpdate,
+          });
         }
       }
 
       const shipmentUpdate = { lastModifiedBy: req.user?.id || null };
-      const openable = isOpenable === 'true' || isOpenable === true;
-      if (openable !== shipment.isOpenable) { shipmentUpdate.isOpenable = openable; changedFields.isOpenable = { from: shipment.isOpenable, to: openable }; }
-      const fastDel = isFastDelivery === 'true' || isFastDelivery === true;
-      if (fastDel !== shipment.isFastDelivery) { shipmentUpdate.isFastDelivery = fastDel; changedFields.isFastDelivery = { from: shipment.isFastDelivery, to: fastDel }; }
-      if (amountGained !== undefined && parseFloat(amountGained) !== parseFloat(shipment.amountGained)) { shipmentUpdate.amountGained = parseFloat(amountGained); changedFields.amountGained = { from: parseFloat(shipment.amountGained), to: parseFloat(amountGained) }; }
-      if (additionalNotes !== undefined && additionalNotes !== shipment.additionalNotes) { shipmentUpdate.additionalNotes = additionalNotes || null; changedFields.additionalNotes = { from: shipment.additionalNotes, to: additionalNotes }; }
+      const openable = isOpenable === "true" || isOpenable === true;
+      if (openable !== shipment.isOpenable) {
+        shipmentUpdate.isOpenable = openable;
+        changedFields.isOpenable = { from: shipment.isOpenable, to: openable };
+      }
+      const fastDel = isFastDelivery === "true" || isFastDelivery === true;
+      if (fastDel !== shipment.isFastDelivery) {
+        shipmentUpdate.isFastDelivery = fastDel;
+        changedFields.isFastDelivery = {
+          from: shipment.isFastDelivery,
+          to: fastDel,
+        };
+      }
+      if (
+        amountGained !== undefined &&
+        parseFloat(amountGained) !== parseFloat(shipment.amountGained)
+      ) {
+        shipmentUpdate.amountGained = parseFloat(amountGained);
+        changedFields.amountGained = {
+          from: parseFloat(shipment.amountGained),
+          to: parseFloat(amountGained),
+        };
+      }
+      if (
+        additionalNotes !== undefined &&
+        additionalNotes !== shipment.additionalNotes
+      ) {
+        shipmentUpdate.additionalNotes = additionalNotes || null;
+        changedFields.additionalNotes = {
+          from: shipment.additionalNotes,
+          to: additionalNotes,
+        };
+      }
       if (totalAmount !== undefined) {
         const newTotal = parseFloat(totalAmount);
-        if (!isNaN(newTotal) && newTotal !== parseFloat(shipment.totalAmount)) { shipmentUpdate.totalAmount = newTotal; changedFields.totalAmount = { from: parseFloat(shipment.totalAmount), to: newTotal }; }
+        if (!isNaN(newTotal) && newTotal !== parseFloat(shipment.totalAmount)) {
+          shipmentUpdate.totalAmount = newTotal;
+          changedFields.totalAmount = {
+            from: parseFloat(shipment.totalAmount),
+            to: newTotal,
+          };
+        }
       }
 
-      await tx.shipment.update({ where: { id: parseInt(id) }, data: shipmentUpdate });
+      await tx.shipment.update({
+        where: { id: parseInt(id) },
+        data: shipmentUpdate,
+      });
 
       if (Array.isArray(items)) {
-        await tx.shipmentItem.updateMany({ where: { shipmentId: parseInt(id) }, data: { isDeleted: true } });
+        await tx.shipmentItem.updateMany({
+          where: { shipmentId: parseInt(id) },
+          data: { isDeleted: true },
+        });
         for (const item of items) {
           await tx.shipmentItem.create({
             data: {
@@ -951,13 +1299,13 @@ exports.updateShipment = async (req, res) => {
             },
           });
         }
-        changedFields.items = 'updated';
+        changedFields.items = "updated";
       }
 
       await tx.log.create({
         data: {
-          action: 'UPDATE_SHIPMENT',
-          entity: 'Shipment',
+          action: "UPDATE_SHIPMENT",
+          entity: "Shipment",
           entityId: parseInt(id),
           details: JSON.stringify({ changedFields }),
           userId: req.user?.id || 1,
@@ -966,9 +1314,9 @@ exports.updateShipment = async (req, res) => {
       });
     });
 
-    res.json({ success: true, message: 'تم تحديث بيانات الشحنة بنجاح' });
+    res.json({ success: true, message: "تم تحديث بيانات الشحنة بنجاح" });
   } catch (error) {
-    console.error('Error updating shipment:', error);
+    console.error("Error updating shipment:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

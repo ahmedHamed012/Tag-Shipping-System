@@ -13,19 +13,19 @@ block content
         button#printBtn.btn.btn-outline-secondary.me-2(type="button" style="display:none")
           i.bi.bi-printer.me-2
           | طباعة
-        button#saveBtn.btn.btn-success(type="button" style="display:none" disabled)
+        button#openSettleModalBtn.btn.btn-success(type="button" style="display:none" disabled)
           i.bi.bi-lock-fill.me-2
-          | حفظ التقفيل
+          | تقفيل
 
     // ── Filters ─────────────────────────────────────────────────────────
     .card.mb-4
       .card-body
         .row.g-3.align-items-end
           .col-md-4
-            label.form-label اختر الساعي
+            label.form-label اختر المندوب
               span.text-danger *
             select#courierSelect.form-select
-              option(value="") -- اختر الساعي --
+              option(value="") -- اختر المندوب --
           .col-md-3
             label.form-label من تاريخ
             input#startDate.form-control(type="date")
@@ -75,43 +75,24 @@ block content
             | الملخص المالي
         .card-body
           .row.g-3
-            .col-md-3
+            .col-md-4
               .p-3.bg-light.rounded.text-center
                 .small.text-muted.mb-1 إجمالي المحصل من العملاء
                 .fs-4.fw-bold.text-primary
                   span#finCollected 0.00
                   small.ms-1 ج.م
-            .col-md-3
+            .col-md-4
               .p-3.bg-light.rounded.text-center
-                .small.text-muted.mb-1
-                  | عمولة الساعي
-                  span.text-muted.ms-1 (
-                  span#feeLabel -
-                  span.text-muted ) ×
-                  span#settleableCount 0
-                  span.text-muted  شحنة
+                .small.text-muted.mb-1 عمولة المندوب (تُحدَّد في التقفيل)
                 .fs-4.fw-bold.text-warning
-                  span#finEarnings 0.00
+                  span#finEarnings -
                   small.ms-1 ج.م
-            .col-md-3
+            .col-md-4
               .p-3.bg-light.rounded.text-center
                 .small.text-muted.mb-1 صافي التسليم للشركة
                 .fs-4.fw-bold.text-success
-                  span#finHandover 0.00
+                  span#finHandover -
                   small.ms-1 ج.م
-            .col-md-3
-              .p-3.bg-light.rounded.text-center
-                #noFeeWarning(style="display:none")
-                  .alert.alert-warning.py-2.mb-0.small
-                    i.bi.bi-exclamation-triangle.me-1
-                    | لم يتم تحديد عمولة للساعي
-                #feeOk(style="display:none")
-                  .alert.alert-success.py-2.mb-0.small
-                    i.bi.bi-check-circle.me-1
-                    | جاهز للتقفيل
-                  .mt-2
-                    label.form-label.small.mb-1 ملاحظات (اختياري)
-                    textarea#settlementNotes.form-control.form-control-sm(rows="2" placeholder="ملاحظات حول هذا التقفيل...")
 
     // ── Shipment tables ──────────────────────────────────────────────────
     #shipmentTables(style="display:none")
@@ -212,10 +193,50 @@ block content
               th الفترة
               th عدد الشحنات
               th إجمالي محصل
-              th عمولة الساعي
+              th عمولة المندوب
               th صافي للشركة
               th تاريخ الحفظ
           tbody#historyTableBody
+
+  // ── Settlement Modal ─────────────────────────────────────────────────
+  #settlementModal.modal.fade(tabindex="-1" aria-labelledby="settlementModalLabel" aria-hidden="true")
+    .modal-dialog.modal-xl.modal-dialog-scrollable
+      .modal-content
+        .modal-header.bg-success.text-white
+          h5.modal-title#settlementModalLabel
+            i.bi.bi-lock-fill.me-2
+            | تقفيل المندوب — إدخال عمولة كل شحنة
+          button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal" aria-label="Close")
+        .modal-body.p-0
+          .table-responsive
+            table.table.table-sm.align-middle.mb-0
+              thead.table-light.sticky-top
+                tr
+                  th رقم الشحنة
+                  th العميل
+                  th المنطقة
+                  th الحالة
+                  th.text-end محصل من العميل
+                  th.text-center(style="min-width:140px") عمولة المندوب (ج.م)
+              tbody#modalShipmentRows
+        .modal-footer.border-top
+          .d-flex.w-100.align-items-center.gap-3
+            .flex-grow-1
+              label.form-label.mb-1.small ملاحظات (اختياري)
+              textarea#settlementNotes.form-control.form-control-sm(rows="2" placeholder="ملاحظات حول هذا التقفيل...")
+            .text-end
+              .small.text-muted.mb-1 إجمالي عمولة المندوب
+              .fs-5.fw-bold.text-warning
+                span#modalTotalEarnings 0.00
+                small.ms-1 ج.م
+              .small.text-muted.mt-1 صافي للشركة:
+                span.fw-bold.text-success.ms-1#modalNetHandover 0.00
+                small.ms-1 ج.م
+          .d-flex.gap-2.mt-2.w-100.justify-content-end
+            button.btn.btn-secondary(type="button" data-bs-dismiss="modal") إلغاء
+            button#confirmSettleBtn.btn.btn-success(type="button")
+              i.bi.bi-lock-fill.me-2
+              | حفظ التقفيل
 
   script.
     let currentCourierId = null;
@@ -240,11 +261,12 @@ block content
 
       document.getElementById('filterBtn').addEventListener('click', () => {
         if (currentCourierId) loadSettlement();
-        else alert('اختر ساعياً أولاً');
+        else alert('اختر مندوباً أولاً');
       });
 
-      document.getElementById('saveBtn').addEventListener('click', saveSettlement);
-      document.getElementById('printBtn').addEventListener('click', () => window.print());
+      document.getElementById('openSettleModalBtn').addEventListener('click', openSettlementModal);
+      document.getElementById('confirmSettleBtn').addEventListener('click', saveSettlement);
+      document.getElementById('printBtn').addEventListener('click', printSettlement);
     });
 
     // ── Data loaders ──────────────────────────────────────────────────────
@@ -254,7 +276,7 @@ block content
       const data = await res.json();
       if (!data.success) return;
       const select = document.getElementById('courierSelect');
-      select.innerHTML = '<option value="">-- اختر الساعي --</option>';
+      select.innerHTML = '<option value="">-- اختر المندوب --</option>';
       data.data.forEach(c => {
         const o = document.createElement('option');
         o.value = c.id; o.textContent = c.fullName;
@@ -282,22 +304,84 @@ block content
       renderHistory(data.settlements);
     }
 
+    function openSettlementModal() {
+      if (!currentData) return;
+      const settleable = [
+        ...currentData.groups.delivered,
+        ...currentData.groups.partialEx,
+        ...currentData.groups.returned,
+      ];
+
+      const tbody = document.getElementById('modalShipmentRows');
+      tbody.innerHTML = settleable.map(s => `
+        <tr data-id="${s.id}" data-collected="${parseFloat(s.deliveryCollectedAmount || 0).toFixed(2)}">
+          <td>${pnLink(s)}</td>
+          <td>${s.receiver?.fullName || '-'}<br><small class="text-muted">${s.receiver?.phone1 || ''}</small></td>
+          <td><small>${loc(s)}</small></td>
+          <td><span class="badge bg-secondary">${s.shipmentStatus}</span></td>
+          <td class="text-end fw-bold text-primary">${parseFloat(s.deliveryCollectedAmount || 0).toFixed(2)} ج.م</td>
+          <td class="text-center">
+            <input type="number" class="form-control form-control-sm courier-fee-input text-center"
+              min="0" step="0.01" value="0" style="max-width:120px;margin:0 auto"
+              data-id="${s.id}" />
+          </td>
+        </tr>
+      `).join('');
+
+      // Attach listeners to update totals on input
+      tbody.querySelectorAll('.courier-fee-input').forEach(inp => {
+        inp.addEventListener('input', recalcModalTotals);
+      });
+
+      recalcModalTotals();
+
+      const modal = new bootstrap.Modal(document.getElementById('settlementModal'));
+      modal.show();
+    }
+
+    function recalcModalTotals() {
+      const rows = document.querySelectorAll('#modalShipmentRows tr[data-id]');
+      let totalCollected = 0;
+      let totalEarnings = 0;
+      rows.forEach(row => {
+        totalCollected += parseFloat(row.dataset.collected) || 0;
+        const inp = row.querySelector('.courier-fee-input');
+        totalEarnings += parseFloat(inp?.value) || 0;
+      });
+      const net = totalCollected - totalEarnings;
+      document.getElementById('modalTotalEarnings').textContent = totalEarnings.toFixed(2);
+      document.getElementById('modalNetHandover').textContent   = net.toFixed(2);
+    }
+
     async function saveSettlement() {
-      if (!currentCourierId || !currentData) return;
+      if (!currentCourierId) return;
+
+      const rows = document.querySelectorAll('#modalShipmentRows tr[data-id]');
+      const shipmentFees = [];
+      rows.forEach(row => {
+        const id  = parseInt(row.dataset.id);
+        const fee = parseFloat(row.querySelector('.courier-fee-input')?.value) || 0;
+        shipmentFees.push({ id, courierFee: fee });
+      });
+
+      if (shipmentFees.length === 0) {
+        alert('لا توجد شحنات في التقفيل');
+        return;
+      }
+
       if (!confirm('هل تريد حفظ وقفل هذا التقفيل؟ لن يمكن التراجع عنه.')) return;
 
       const notes = document.getElementById('settlementNotes').value;
-      const start = document.getElementById('startDate').value;
-      const end   = document.getElementById('endDate').value;
 
       const res  = await fetch(`/couriers/api/settlement/${currentCourierId}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startDate: start, endDate: end, notes }),
+        body: JSON.stringify({ notes, shipmentFees }),
       });
       const data = await res.json();
 
       if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('settlementModal'))?.hide();
         showToast('success', data.message);
         loadSettlement();
         loadHistory();
@@ -321,22 +405,16 @@ block content
       document.getElementById('statReturned').textContent  = d.stats.returned;
       document.getElementById('statStillOut').textContent  = d.stats.stillOut;
 
-      // Financial
+      // Financial (collected only — earnings shown after settlement modal)
       const f = d.financial;
-      document.getElementById('finCollected').textContent  = f.totalCollected.toFixed(2);
-      document.getElementById('finEarnings').textContent   = f.courierEarnings.toFixed(2);
-      document.getElementById('finHandover').textContent   = f.netHandover.toFixed(2);
-      document.getElementById('feeLabel').textContent      = f.feePerShipment.toFixed(2) + ' ج.م';
-      document.getElementById('settleableCount').textContent = d.stats.settleable;
+      document.getElementById('finCollected').textContent = f.totalCollected.toFixed(2);
+      document.getElementById('finEarnings').textContent  = '-';
+      document.getElementById('finHandover').textContent  = '-';
 
-      const hasFee = f.feePerShipment > 0;
-      document.getElementById('noFeeWarning').style.display = hasFee ? 'none' : '';
-      document.getElementById('feeOk').style.display        = hasFee ? '' : 'none';
-
-      const canSave = d.stats.settleable > 0;
-      const saveBtn = document.getElementById('saveBtn');
-      saveBtn.style.display = '';
-      saveBtn.disabled = !canSave;
+      const canSettle = d.stats.settleable > 0;
+      const openBtn = document.getElementById('openSettleModalBtn');
+      openBtn.style.display = '';
+      openBtn.disabled = !canSettle;
 
       // Tables
       renderTable('listDelivered',  'badgeDelivered',  d.groups.delivered,  rowDelivered);
@@ -413,12 +491,319 @@ block content
         </tr>`).join('');
     }
 
+    // ── Print ─────────────────────────────────────────────────────────────
+
+    function printSettlement() {
+      if (!currentData) return;
+
+      const d = currentData;
+      const courierName = d.courier.fullName;
+      const courierPhone = d.courier.phone || '';
+      const today = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+      const startVal = document.getElementById('startDate').value;
+      const endVal   = document.getElementById('endDate').value;
+      const periodStr = startVal === endVal
+        ? new Date(startVal).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })
+        : `${new Date(startVal).toLocaleDateString('ar-EG')} — ${new Date(endVal).toLocaleDateString('ar-EG')}`;
+
+      const settleable = [...d.groups.delivered, ...d.groups.partialEx, ...d.groups.returned];
+      const totalCollected = d.financial.totalCollected;
+
+      function shipRow(s, idx) {
+        const collected = parseFloat(s.deliveryCollectedAmount || 0).toFixed(2);
+        const location  = [s.receiver?.governorate, s.receiver?.city].filter(Boolean).join(' / ') || '-';
+        const id        = s.policyNumber || ('SH-' + s.id);
+        return `<tr>
+          <td>${idx + 1}</td>
+          <td>${id}</td>
+          <td>${s.receiver?.fullName || '-'}</td>
+          <td>${s.receiver?.phone1 || '-'}</td>
+          <td>${location}</td>
+          <td>${s.shipmentStatus}</td>
+          <td class="num">${collected}</td>
+          <td class="num fee-cell" data-id="${s.id}"></td>
+        </tr>`;
+      }
+
+      const rows = settleable.map((s, i) => shipRow(s, i)).join('');
+
+      const html = `<!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+      <meta charset="UTF-8">
+      <title>كشف تقفيل - ${courierName}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: 'Tajawal', Arial, sans-serif;
+          font-size: 13px;
+          color: #1a1a1a;
+          background: #fff;
+          padding: 28px 32px;
+        }
+
+        /* ── Header ── */
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 3px solid #085528;
+          padding-bottom: 14px;
+          margin-bottom: 18px;
+        }
+        .company-block .company-name {
+          font-size: 22px;
+          font-weight: 700;
+          color: #085528;
+          letter-spacing: 0.5px;
+        }
+        .company-block .company-sub {
+          font-size: 12px;
+          color: #555;
+          margin-top: 2px;
+        }
+        .doc-block {
+          text-align: left;
+        }
+        .doc-block .doc-title {
+          font-size: 17px;
+          font-weight: 700;
+          color: #085528;
+        }
+        .doc-block .doc-meta {
+          font-size: 11px;
+          color: #666;
+          margin-top: 4px;
+          line-height: 1.7;
+        }
+
+        /* ── Info grid ── */
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px 30px;
+          background: #f7faf8;
+          border: 1px solid #d4edda;
+          border-radius: 6px;
+          padding: 12px 16px;
+          margin-bottom: 18px;
+        }
+        .info-row { display: flex; gap: 6px; align-items: baseline; }
+        .info-label { font-weight: 600; color: #444; white-space: nowrap; }
+        .info-value { color: #1a1a1a; }
+
+        /* ── Table ── */
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 18px;
+          font-size: 12px;
+        }
+        thead tr {
+          background: #085528;
+          color: #fff;
+        }
+        thead th {
+          padding: 7px 8px;
+          font-weight: 600;
+          text-align: right;
+          border: 1px solid #085528;
+        }
+        tbody tr:nth-child(even) { background: #f4faf7; }
+        tbody tr:hover { background: #e8f5ee; }
+        tbody td {
+          padding: 6px 8px;
+          border: 1px solid #d0ddd6;
+          text-align: right;
+          vertical-align: middle;
+        }
+        .num { text-align: center; font-variant-numeric: tabular-nums; }
+        .fee-cell { min-width: 70px; }
+
+        /* ── Summary ── */
+        .summary {
+          display: flex;
+          justify-content: flex-end;
+          margin-bottom: 24px;
+        }
+        .summary-box {
+          border: 1px solid #d4edda;
+          border-radius: 6px;
+          overflow: hidden;
+          min-width: 320px;
+        }
+        .summary-box table { margin: 0; font-size: 13px; }
+        .summary-box table td { border-color: #d4edda; padding: 7px 14px; }
+        .summary-box .s-label { color: #444; font-weight: 500; }
+        .summary-box .s-value { font-weight: 700; color: #085528; text-align: left; }
+        .summary-box .s-total { background: #085528; color: #fff; }
+        .summary-box .s-total td { border-color: #085528; }
+        .summary-box .s-total .s-value { color: #fff; }
+
+        /* ── Signatures ── */
+        .signatures {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 40px;
+          margin-top: 36px;
+          padding-top: 16px;
+          border-top: 1px dashed #aaa;
+        }
+        .sig-block { text-align: center; }
+        .sig-line {
+          border-bottom: 1px solid #333;
+          height: 44px;
+          margin-bottom: 6px;
+        }
+        .sig-label { font-size: 12px; color: #555; }
+
+        /* ── Footer ── */
+        .footer {
+          text-align: center;
+          font-size: 10px;
+          color: #aaa;
+          margin-top: 30px;
+          border-top: 1px solid #eee;
+          padding-top: 8px;
+        }
+
+        @media print {
+          body { padding: 12px 16px; }
+          @page { margin: 10mm; }
+        }
+      </style>
+      </head>
+      <body>
+
+      <!-- Header -->
+      <div class="header">
+        <div class="company-block">
+          <div class="company-name">نظام الشحن</div>
+          <div class="company-sub">كشف تقفيل مندوب توصيل</div>
+        </div>
+        <div class="doc-block">
+          <div class="doc-title">كشف تقفيل</div>
+          <div class="doc-meta">
+            تاريخ الإصدار: ${today}<br>
+            الفترة: ${periodStr}
+          </div>
+        </div>
+      </div>
+
+      <!-- Courier info -->
+      <div class="info-grid">
+        <div class="info-row">
+          <span class="info-label">اسم المندوب:</span>
+          <span class="info-value">${courierName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">رقم الهاتف:</span>
+          <span class="info-value">${courierPhone}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">إجمالي الشحنات:</span>
+          <span class="info-value">${d.stats.total} شحنة</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">الشحنات القابلة للتقفيل:</span>
+          <span class="info-value">${settleable.length} شحنة (${d.stats.delivered} تم توصيل / ${d.stats.partialEx} جزئي-استبدال / ${d.stats.returned} مرتجع)</span>
+        </div>
+      </div>
+
+      <!-- Shipments table -->
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>رقم الشحنة</th>
+            <th>العميل</th>
+            <th>الهاتف</th>
+            <th>المنطقة</th>
+            <th>الحالة</th>
+            <th class="num">محصل (ج.م)</th>
+            <th class="num">عمولة المندوب</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr style="background:#e8f5ee;font-weight:700">
+            <td colspan="6" style="text-align:center">الإجمالي</td>
+            <td class="num">${totalCollected.toFixed(2)}</td>
+            <td class="num" id="totalFeePrint">—</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Summary box -->
+      <div class="summary">
+        <div class="summary-box">
+          <table>
+            <tr>
+              <td class="s-label">إجمالي المحصل من العملاء</td>
+              <td class="s-value">${totalCollected.toFixed(2)} ج.م</td>
+            </tr>
+            <tr>
+              <td class="s-label">إجمالي عمولة المندوب</td>
+              <td class="s-value" id="summaryEarnings">—</td>
+            </tr>
+            <tr class="s-total">
+              <td class="s-label">صافي المبلغ المسلَّم للشركة</td>
+              <td class="s-value" id="summaryNet">—</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Signatures -->
+      <div class="signatures">
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-label">توقيع المندوب<br>${courierName}</div>
+        </div>
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <div class="sig-label">توقيع المسؤول<br>اسم المسؤول</div>
+        </div>
+      </div>
+
+      <div class="footer">طُبع بتاريخ ${today} — نظام الشحن</div>
+
+      <script>
+        // Pull courier fee values from the parent window's modal inputs (if open) or leave blank
+        try {
+          const parentRows = window.opener && window.opener.document.querySelectorAll('#modalShipmentRows tr[data-id]');
+          if (parentRows && parentRows.length) {
+            let totalFee = 0;
+            parentRows.forEach(row => {
+              const id  = row.dataset.id;
+              const fee = parseFloat(row.querySelector('.courier-fee-input')?.value) || 0;
+              totalFee += fee;
+              const cell = document.querySelector('.fee-cell[data-id="' + id + '"]');
+              if (cell) cell.textContent = fee.toFixed(2);
+            });
+            document.getElementById('totalFeePrint').textContent = totalFee.toFixed(2) + ' ج.م';
+            document.getElementById('summaryEarnings').textContent = totalFee.toFixed(2) + ' ج.م';
+            const net = ${totalCollected} - totalFee;
+            document.getElementById('summaryNet').textContent = net.toFixed(2) + ' ج.م';
+          }
+        } catch(e) {}
+        window.onload = () => { window.print(); };
+      <\/script>
+      </body>
+      </html>`;
+
+      const win = window.open('', '_blank', 'width=900,height=700');
+      win.document.write(html);
+      win.document.close();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     function fmt(d) { return new Date(d).toLocaleDateString('ar-EG'); }
     function show(id) { document.getElementById(id).style.display = ''; }
     function hideSections() {
-      ['settlementStats','financialSummary','shipmentTables','settlementHistory','printBtn','saveBtn']
+      ['settlementStats','financialSummary','shipmentTables','settlementHistory','printBtn','openSettleModalBtn']
         .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
     }
 

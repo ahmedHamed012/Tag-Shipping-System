@@ -70,7 +70,7 @@ exports.assignPickupCourierHandler = async (req, res) => {
     if (!courierId) {
       return res.status(400).json({
         success: false,
-        error: "معرف الساعي مطلوب",
+        error: "معرف المندوب مطلوب",
       });
     }
 
@@ -98,7 +98,7 @@ exports.assignDeliveryCourierHandler = async (req, res) => {
     if (!courierId) {
       return res.status(400).json({
         success: false,
-        error: "معرف الساعي مطلوب",
+        error: "معرف المندوب مطلوب",
       });
     }
 

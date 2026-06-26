@@ -259,6 +259,7 @@ block content
     let selectedReceiver = null;
     let itemCounter = 0;
     let manualTotalOverride = null; // null = use calculated, number = user-set value
+    let lastQuote = null; // stores the latest quote response (shippingCost, extraWeightFee)
 
     // Constants for shipment statuses
     const INITIAL_STATUS = "طلب بيك اب";
@@ -389,6 +390,7 @@ block content
       .then(data => {
         console.log(data);
         if (data.success) {
+          lastQuote = data;
           displayPriceBreakdown(data);
         } else {
           alert(data.error);
@@ -637,6 +639,8 @@ block content
         isOpenable: document.getElementById('isOpenable').checked,
         isFastDelivery: document.getElementById('isFastDelivery').checked,
         totalAmount,
+        shippingCost: lastQuote ? lastQuote.shippingCost : null,
+        extraWeightFee: lastQuote ? (lastQuote.extraWeightFee || null) : null,
         amountGained,
         additionalNotes: document.getElementById('additionalNotes').value || null,
         items

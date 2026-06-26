@@ -1,0 +1,21 @@
+BEGIN TRY
+
+BEGIN TRAN;
+
+-- AlterTable
+ALTER TABLE [dbo].[shipments] ADD [courierFee] DECIMAL(10,2),
+[extraWeightFee] DECIMAL(10,2),
+[shippingCost] DECIMAL(10,2);
+
+COMMIT TRAN;
+
+END TRY
+BEGIN CATCH
+
+IF @@TRANCOUNT > 0
+BEGIN
+    ROLLBACK TRAN;
+END;
+THROW
+
+END CATCH

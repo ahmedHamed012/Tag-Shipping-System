@@ -6,11 +6,11 @@ block content
       .col-md-8
         h2
           i.bi.bi-qr-code.me-2
-          | تعيين الشحنات للساعيين
+          | تعيين الشحنات للمندوبين
 
       .col-md-4.text-end
         select#courierSelect.form-select
-          option(value="") اختر ساعي
+          option(value="") اختر مندوب
           
     .card
       .card-body
@@ -173,7 +173,7 @@ block content
 
         if (data.success) {
           const select = document.getElementById('courierSelect');
-          select.innerHTML = '<option value="">اختر ساعي</option>';
+          select.innerHTML = '<option value="">اختر مندوب</option>';
           data.data.forEach(courier => {
             const option = document.createElement('option');
             option.value = courier.id;
@@ -282,7 +282,7 @@ block content
 
     async function assignShipment(policyNumber) {
       if (!selectedCourierId) {
-        showScanResult('اختر ساعي أولاً', 'danger');
+        showScanResult('اختر مندوب أولاً', 'danger');
         return;
       }
 
@@ -351,7 +351,7 @@ block content
 
     async function generateDeliverySheet() {
       if (!selectedCourierId) {
-        alert('اختر ساعي أولاً');
+        alert('اختر مندوب أولاً');
         return;
       }
 

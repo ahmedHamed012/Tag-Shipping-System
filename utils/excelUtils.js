@@ -315,7 +315,7 @@ function generateCourierTemplate() {
   ];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "الساعيون");
+  XLSX.utils.book_append_sheet(wb, ws, "المندوبون");
   return XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
 }
 

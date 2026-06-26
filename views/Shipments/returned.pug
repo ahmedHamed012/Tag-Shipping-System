@@ -1,0 +1,169 @@
+extends ../layouts/layout
+
+block content
+  - var STATUS_COLORS = {"مرتجع":"dark","مرتجع للتاجر":"dark","مرتجع للمستودع":"dark","مرتجع جزئي":"warning","مرتجع استبدال":"info","مرتجع مع دفع الشحن":"secondary","رفض التسليم مع دفع الشحن":"secondary"}
+
+  .container-fluid.py-4
+
+    // ── Header ───────────────────────────────────────────────────────────
+    .row.mb-4
+      .col-md-8
+        h1.mb-0
+          i.bi.bi-arrow-return-right.me-2
+          | الشحنات المرتجعة
+      .col-md-4.text-end
+        a.btn.btn-outline-secondary(href="/shipments")
+          i.bi.bi-box-seam-fill.me-2
+          | جميع الشحنات
+
+    // ── Stats cards ───────────────────────────────────────────────────────
+    .row.g-3.mb-4
+      each label, key in {"مرتجع":"dark","مرتجع للتاجر":"dark","مرتجع للمستودع":"secondary","مرتجع جزئي":"warning","مرتجع استبدال":"info","مرتجع مع دفع الشحن":"secondary","رفض التسليم مع دفع الشحن":"danger"}
+        .col-6.col-md
+          a.text-decoration-none(href=`/returned-shipments?status=${encodeURIComponent(key)}`)
+            .card.text-center.border-0.shadow-sm.h-100(class=(status === key ? "border border-2 border-" + label : ""))
+              .card-body.py-3
+                .fs-3.fw-bold(class="text-" + label)= countMap[key] || 0
+                .small.text-muted= key
+
+    // ── Filters ───────────────────────────────────────────────────────────
+    .card.mb-4
+      .card-body.p-2
+        .d-flex.gap-2.align-items-end.flex-wrap
+          div(style="min-width:160px")
+            label.form-label.small.mb-1 بحث
+            input#searchInput.form-control.form-control-sm(type="text" placeholder="بحث..." value=search)
+          div(style="min-width:160px")
+            label.form-label.small.mb-1 الحالة
+            select#statusFilter.form-select.form-select-sm
+              option(value="" selected=!status) كل الحالات المرتجعة
+              each s in RETURNED_STATUSES
+                option(value=s selected=(status === s))= s
+          div(style="min-width:160px")
+            label.form-label.small.mb-1 التاجر
+            select#merchantFilter.form-select.form-select-sm
+              option(value="" selected=!merchantId) كل التجار
+              each m in merchants
+                option(value=m.id selected=(merchantId === m.id))= m.name
+          div(style="min-width:160px")
+            label.form-label.small.mb-1 المندوب
+            select#courierFilter.form-select.form-select-sm
+              option(value="" selected=!courierId) كل المناديب
+              each c in couriers
+                option(value=c.id selected=(courierId == c.id))= c.fullName
+          div(style="min-width:140px")
+            label.form-label.small.mb-1 من تاريخ
+            input#dateFromFilter.form-control.form-control-sm(type="date" value=dateFrom)
+          div(style="min-width:140px")
+            label.form-label.small.mb-1 إلى تاريخ
+            input#dateToFilter.form-control.form-control-sm(type="date" value=dateTo)
+          div(style="min-width:80px")
+            label.form-label.small.mb-1 عدد النتائج
+            select#limitSelect.form-select.form-select-sm
+              option(value="10" selected=(limit === 10)) 10
+              option(value="20" selected=(limit === 20)) 20
+              option(value="50" selected=(limit === 50)) 50
+          div.d-flex.align-items-end
+            button.btn.btn-sm.btn-outline-secondary(onclick="resetFilters()" title="إعادة تعيين")
+              i.bi.bi-arrow-repeat
+
+    // ── Table ─────────────────────────────────────────────────────────────
+    .card
+      .table-responsive
+        table.table.table-hover.table-sm.mb-0(style="min-width:900px")
+          thead.table-light
+            tr
+              th(style="width:140px") رقم الشحنة
+              th التاجر
+              th العميل
+              th المنطقة
+              th المندوب
+              th.text-center(style="width:160px") الحالة
+              th.text-center(style="width:110px") المبلغ
+              th.text-center(style="width:110px") المحصل
+              th(style="width:110px") تاريخ التحديث
+              th.text-center(style="width:70px") عرض
+
+          tbody
+            if shipments && shipments.length > 0
+              each s in shipments
+                - var sc = STATUS_COLORS[s.shipmentStatus] || "secondary"
+                tr
+                  td.fw-bold
+                    a(href="/shipments/" + s.id style="text-decoration:underline;color:inherit")
+                      span.badge.bg-info= s.policyNumber || ("SH-" + s.id)
+                  td= s.merchant.name
+                  td
+                    div= s.receiver.fullName
+                    small.text-muted= s.receiver.phone1
+                  td
+                    small= [s.receiver.governorate, s.receiver.city].filter(Boolean).join(" / ") || "-"
+                  td= s.courier ? s.courier.fullName : "-"
+                  td.text-center
+                    span.badge(class="bg-" + sc)= s.shipmentStatus
+                  td.text-center.fw-bold= parseFloat(s.totalAmount).toFixed(2) + " ج.م"
+                  td.text-center
+                    if s.deliveryCollectedAmount
+                      span.text-success.fw-bold= parseFloat(s.deliveryCollectedAmount).toFixed(2) + " ج.م"
+                    else
+                      span.text-muted -
+                  td
+                    small= new Date(s.updatedAt).toLocaleDateString("ar-EG")
+                  td.text-center
+                    a.btn.btn-sm.btn-outline-primary(href="/shipments/" + s.id title="عرض التفاصيل")
+                      i.bi.bi-eye
+            else
+              tr
+                td.text-center.py-5(colspan="10")
+                  i.bi.bi-inbox.d-block.mb-2(style="font-size:2rem;color:#ccc")
+                  span.text-muted لا توجد شحنات مرتجعة
+
+    // ── Pagination ────────────────────────────────────────────────────────
+    .row.mt-3
+      .col-md-6
+        p.text-muted.small= "إجمالي: " + total + " شحنة"
+      .col-md-6
+        nav.float-end(aria-label="ترقيم الصفحات")
+          ul.pagination.pagination-sm.mb-0
+            if currentPage > 1
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick="goPage(1)") أول
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${currentPage - 1})`) السابق
+            - for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++)
+              if i === currentPage
+                li.page-item.active
+                  span.page-link= i
+              else
+                li.page-item
+                  a.page-link(href="javascript:void(0)" onclick=`goPage(${i})`)= i
+            if currentPage < totalPages
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${currentPage + 1})`) التالي
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${totalPages})`) أخير
+
+  script.
+    function getParams(page) {
+      return new URLSearchParams({
+        page:       page || 1,
+        limit:      document.getElementById('limitSelect').value,
+        search:     document.getElementById('searchInput').value,
+        status:     document.getElementById('statusFilter').value,
+        merchantId: document.getElementById('merchantFilter').value,
+        courierId:  document.getElementById('courierFilter').value,
+        dateFrom:   document.getElementById('dateFromFilter').value,
+        dateTo:     document.getElementById('dateToFilter').value,
+      }).toString();
+    }
+
+    function applyFilters() { window.location.href = '/returned-shipments?' + getParams(1); }
+    function goPage(p)      { window.location.href = '/returned-shipments?' + getParams(p); }
+    function resetFilters() { window.location.href = '/returned-shipments'; }
+
+    ['searchInput'].forEach(id =>
+      document.getElementById(id).addEventListener('change', applyFilters)
+    );
+    ['statusFilter','merchantFilter','courierFilter','limitSelect','dateFromFilter','dateToFilter'].forEach(id =>
+      document.getElementById(id).addEventListener('change', applyFilters)
+    );

@@ -5,7 +5,7 @@
       .modal-header.bg-primary.text-white
         h5#courierModalTitle.modal-title
           i.bi.bi-person-badge.me-2
-          | إضافة ساعي
+          | إضافة مندوب
         button.btn-close.btn-close-white(type="button" data-bs-dismiss="modal")
 
       .modal-body
@@ -84,7 +84,7 @@
                 min="0"
                 placeholder="مثال: 10.00"
               )
-              small.form-text.text-muted المبلغ الذي يحصل عليه الساعي عن كل شحنة يوصلها
+              small.form-text.text-muted المبلغ الذي يحصل عليه المندوب عن كل شحنة يوصلها
 
           // Documents Upload
           .card.mt-3
@@ -185,5 +185,5 @@
       document.getElementById('courierForm').reset();
       document.getElementById('courierForm').dataset.action = 'create';
       document.getElementById('courierId').value = '';
-      document.getElementById('courierModalTitle').textContent = 'إضافة ساعي';
+      document.getElementById('courierModalTitle').textContent = 'إضافة مندوب';
     });

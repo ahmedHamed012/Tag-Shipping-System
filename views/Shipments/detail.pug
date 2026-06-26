@@ -11,9 +11,9 @@ block content
       a.btn.btn-outline-secondary.btn-sm(href="/shipments")
         i.bi.bi-arrow-right.me-1
         | العودة للشحنات
-      h1.mb-0.flex-grow-1
-        i.bi.bi-box-seam-fill.me-2
-        span= shipment.policyNumber || ("SH-" + shipment.id)
+      .flex-grow-1.d-flex.flex-column.align-items-start
+        svg#shipmentBarcode
+        small.text-muted.mt-1.fw-semibold= shipment.policyNumber || ("SH-" + shipment.id)
       span.badge.fs-6(class="bg-" + statusColor)= shipment.shipmentStatus
       button#toggleStatusBtn.btn.btn-outline-primary(onclick="toggleStatus()")
         i.bi.bi-arrow-repeat.me-2
@@ -367,8 +367,20 @@ block content
     .timeline-item::before { content: ''; position: absolute; right: -21px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #e9ecef; border: 2px solid #fff; }
     .timeline-icon { width: 32px; text-align: center; }
 
+  script(src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js")
+
   script.
     const SHIPMENT_ID     = !{shipment.id};
+    const POLICY_NUMBER   = '!{shipment.policyNumber || ("SH-" + shipment.id)}';
+
+    JsBarcode('#shipmentBarcode', POLICY_NUMBER, {
+      format:       'CODE128',
+      width:        2,
+      height:       44,
+      displayValue: false,
+      margin:       0,
+      lineColor:    '#1a1a1a',
+    });
     const MERCHANT_ID     = '!{shipment.merchantId}';
     const MAX_WEIGHT      = !{parseFloat(shipment.merchant.maxShipmentWeight || 0)};
     const EXTRA_WEIGHT_FEE= !{parseFloat(shipment.merchant.extraWeightFeePerKg || 0)};

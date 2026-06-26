@@ -88,7 +88,7 @@ exports.getCourier = async (req, res) => {
     if (!courier) {
       return res
         .status(404)
-        .json({ success: false, error: "الساعي غير موجود" });
+        .json({ success: false, error: "المندوب غير موجود" });
     }
 
     res.json({ success: true, data: courier });
@@ -125,7 +125,7 @@ exports.createCourier = async (req, res) => {
     if (courierType && !["PICKUP", "DELIVERY"].includes(courierType)) {
       return res.status(400).json({
         success: false,
-        error: "نوع الساعي غير صحيح. يجب أن يكون PICKUP أو DELIVERY",
+        error: "نوع المندوب غير صحيح. يجب أن يكون PICKUP أو DELIVERY",
       });
     }
 
@@ -178,7 +178,9 @@ exports.createCourier = async (req, res) => {
         drivingLicenseFront,
         drivingLicenseBack,
         courierType: courierType || "PICKUP",
-        deliveryFeePerShipment: deliveryFeePerShipment ? parseFloat(deliveryFeePerShipment) : null,
+        deliveryFeePerShipment: deliveryFeePerShipment
+          ? parseFloat(deliveryFeePerShipment)
+          : null,
         createdBy: req.user?.id || null,
       },
       include: {
@@ -189,7 +191,7 @@ exports.createCourier = async (req, res) => {
 
     res.json({
       success: true,
-      message: "تم إضافة الساعي بنجاح",
+      message: "تم إضافة المندوب بنجاح",
       data: courier,
     });
   } catch (error) {
@@ -226,7 +228,7 @@ exports.updateCourier = async (req, res) => {
     if (courierType && !["PICKUP", "DELIVERY"].includes(courierType)) {
       return res.status(400).json({
         success: false,
-        error: "نوع الساعي غير صحيح. يجب أن يكون PICKUP أو DELIVERY",
+        error: "نوع المندوب غير صحيح. يجب أن يكون PICKUP أو DELIVERY",
       });
     }
 
@@ -254,7 +256,7 @@ exports.updateCourier = async (req, res) => {
     if (!currentCourier) {
       return res.status(404).json({
         success: false,
-        error: "الساعي غير موجود",
+        error: "المندوب غير موجود",
       });
     }
 
@@ -314,9 +316,10 @@ exports.updateCourier = async (req, res) => {
         drivingLicenseFront,
         drivingLicenseBack,
         ...(courierType && { courierType }),
-        deliveryFeePerShipment: deliveryFeePerShipment !== undefined && deliveryFeePerShipment !== ''
-          ? parseFloat(deliveryFeePerShipment)
-          : undefined,
+        deliveryFeePerShipment:
+          deliveryFeePerShipment !== undefined && deliveryFeePerShipment !== ""
+            ? parseFloat(deliveryFeePerShipment)
+            : undefined,
         updatedBy: req.user?.id || null,
       },
       include: {
@@ -327,7 +330,7 @@ exports.updateCourier = async (req, res) => {
 
     res.json({
       success: true,
-      message: "تم تحديث بيانات الساعي بنجاح",
+      message: "تم تحديث بيانات المندوب بنجاح",
       data: courier,
     });
   } catch (error) {
@@ -350,7 +353,7 @@ exports.toggleCourierStatus = async (req, res) => {
     if (!courier) {
       return res.status(404).json({
         success: false,
-        error: "الساعي غير موجود",
+        error: "المندوب غير موجود",
       });
     }
 
@@ -367,7 +370,7 @@ exports.toggleCourierStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: `تم ${updated.isActive ? "تفعيل" : "تعطيل"} الساعي بنجاح`,
+      message: `تم ${updated.isActive ? "تفعيل" : "تعطيل"} المندوب بنجاح`,
       data: updated,
     });
   } catch (error) {
@@ -390,7 +393,7 @@ exports.deleteCourier = async (req, res) => {
 
     res.json({
       success: true,
-      message: "تم حذف الساعي بنجاح",
+      message: "تم حذف المندوب بنجاح",
     });
   } catch (error) {
     console.error("Error deleting courier:", error);
@@ -430,7 +433,7 @@ exports.getCouriersByType = async (req, res) => {
     if (!type || !["PICKUP", "DELIVERY"].includes(type.toUpperCase())) {
       return res.status(400).json({
         success: false,
-        error: "نوع الساعي غير صحيح. يجب أن يكون PICKUP أو DELIVERY",
+        error: "نوع المندوب غير صحيح. يجب أن يكون PICKUP أو DELIVERY",
       });
     }
 
@@ -542,7 +545,7 @@ exports.assignShipmentToCourier = async (req, res) => {
     if ((!shipmentId && !policyNumber) || !courierId) {
       return res.status(400).json({
         success: false,
-        error: "رقم الشحنة/الباركود ورقم الساعي مطلوبان",
+        error: "رقم الشحنة/الباركود ورقم المندوب مطلوبان",
       });
     }
 
@@ -554,7 +557,7 @@ exports.assignShipmentToCourier = async (req, res) => {
     if (!courier) {
       return res.status(404).json({
         success: false,
-        error: "الساعي غير موجود أو غير نشط",
+        error: "المندوب غير موجود أو غير نشط",
       });
     }
 
@@ -577,7 +580,7 @@ exports.assignShipmentToCourier = async (req, res) => {
     if (shipment.courierId === parseInt(courierId, 10)) {
       return res.status(400).json({
         success: false,
-        error: "الشحنة مسندة بالفعل لهذا الساعي",
+        error: "الشحنة مسندة بالفعل لهذا المندوب",
       });
     }
 
@@ -606,7 +609,7 @@ exports.assignShipmentToCourier = async (req, res) => {
 
     res.json({
       success: true,
-      message: "تم إسناد الشحنة للساعي بنجاح",
+      message: "تم إسناد الشحنة للمندوب بنجاح",
       data: updated,
       shipmentNumber: updated.policyNumber || updated.id,
     });
@@ -728,7 +731,7 @@ exports.generateDeliverySheet = async (req, res) => {
     if (!courier) {
       return res.status(404).json({
         success: false,
-        error: "الساعي غير موجود",
+        error: "المندوب غير موجود",
       });
     }
 
@@ -782,7 +785,9 @@ exports.getCourierSettlement = async (req, res) => {
     });
 
     if (!courier) {
-      return res.status(404).json({ success: false, error: "الساعي غير موجود" });
+      return res
+        .status(404)
+        .json({ success: false, error: "المندوب غير موجود" });
     }
 
     const where = {
@@ -791,39 +796,65 @@ exports.getCourierSettlement = async (req, res) => {
       isSettled: false,
     };
 
-    if (startDate) where.updatedAt = { ...(where.updatedAt || {}), gte: new Date(startDate) };
-    if (endDate)   where.updatedAt = { ...(where.updatedAt || {}), lte: new Date(endDate + "T23:59:59.999Z") };
+    if (startDate)
+      where.updatedAt = {
+        ...(where.updatedAt || {}),
+        gte: new Date(startDate),
+      };
+    if (endDate)
+      where.updatedAt = {
+        ...(where.updatedAt || {}),
+        lte: new Date(endDate + "T23:59:59.999Z"),
+      };
 
     const shipments = await prisma.shipment.findMany({
       where,
       include: {
-        receiver: { select: { fullName: true, phone1: true, governorate: true, city: true } },
+        receiver: {
+          select: {
+            fullName: true,
+            phone1: true,
+            governorate: true,
+            city: true,
+          },
+        },
         merchant: { select: { name: true } },
       },
       orderBy: { updatedAt: "desc" },
     });
 
     // Status groups
-    const DELIVERED   = ["تم التوصيل"];
-    const PARTIAL_EX  = ["تسليم جزئي", "استبدال"];
-    const RETURNED    = ["مرتجع", "مرتجع للتاجر", "مرتجع للمستودع", "مرتجع جزئي", "مرتجع استبدال"];
-    const STILL_OUT   = ["قيد التوصيل"];
+    const DELIVERED = ["تم التوصيل"];
+    const PARTIAL_EX = ["تسليم جزئي", "استبدال"];
+    const RETURNED = [
+      "مرتجع",
+      "مرتجع للتاجر",
+      "مرتجع للمستودع",
+      "مرتجع جزئي",
+      "مرتجع استبدال",
+    ];
+    const STILL_OUT = ["قيد التوصيل"];
 
     const groups = {
-      delivered:  shipments.filter(s => DELIVERED.includes(s.shipmentStatus)),
-      partialEx:  shipments.filter(s => PARTIAL_EX.includes(s.shipmentStatus)),
-      returned:   shipments.filter(s => RETURNED.includes(s.shipmentStatus)),
-      stillOut:   shipments.filter(s => STILL_OUT.includes(s.shipmentStatus)),
+      delivered: shipments.filter((s) => DELIVERED.includes(s.shipmentStatus)),
+      partialEx: shipments.filter((s) => PARTIAL_EX.includes(s.shipmentStatus)),
+      returned: shipments.filter((s) => RETURNED.includes(s.shipmentStatus)),
+      stillOut: shipments.filter((s) => STILL_OUT.includes(s.shipmentStatus)),
     };
 
     // Shipments that can be settled (everything except still-out)
-    const settleable = [...groups.delivered, ...groups.partialEx, ...groups.returned];
+    const settleable = [
+      ...groups.delivered,
+      ...groups.partialEx,
+      ...groups.returned,
+    ];
 
     const feePerShipment = parseFloat(courier.deliveryFeePerShipment || 0);
 
     // Cash collected from customers = sum of deliveryCollectedAmount for completed shipments
     const totalCollected = settleable.reduce(
-      (sum, s) => sum + parseFloat(s.deliveryCollectedAmount || 0), 0
+      (sum, s) => sum + parseFloat(s.deliveryCollectedAmount || 0),
+      0,
     );
     // Courier earns a fee for each completed (non-still-out) shipment
     const courierEarnings = settleable.length * feePerShipment;
@@ -835,18 +866,18 @@ exports.getCourierSettlement = async (req, res) => {
         courier,
         groups,
         stats: {
-          total:       shipments.length,
-          delivered:   groups.delivered.length,
-          partialEx:   groups.partialEx.length,
-          returned:    groups.returned.length,
-          stillOut:    groups.stillOut.length,
-          settleable:  settleable.length,
+          total: shipments.length,
+          delivered: groups.delivered.length,
+          partialEx: groups.partialEx.length,
+          returned: groups.returned.length,
+          stillOut: groups.stillOut.length,
+          settleable: settleable.length,
         },
         financial: {
           feePerShipment,
-          totalCollected:  parseFloat(totalCollected.toFixed(2)),
+          totalCollected: parseFloat(totalCollected.toFixed(2)),
           courierEarnings: parseFloat(courierEarnings.toFixed(2)),
-          netHandover:     parseFloat(netHandover.toFixed(2)),
+          netHandover: parseFloat(netHandover.toFixed(2)),
         },
       },
     });
@@ -862,54 +893,79 @@ exports.getCourierSettlement = async (req, res) => {
 exports.saveSettlement = async (req, res) => {
   try {
     const { courierId } = req.params;
-    const { startDate, endDate, notes } = req.body;
+    // shipmentFees: [{ id: number, courierFee: number }]
+    const { notes, shipmentFees } = req.body;
 
-    const courier = await prisma.courier.findUnique({ where: { id: parseInt(courierId) } });
-    if (!courier) return res.status(404).json({ success: false, error: "الساعي غير موجود" });
+    if (!Array.isArray(shipmentFees) || shipmentFees.length === 0) {
+      return res.json({ success: false, error: "لا توجد شحنات في التقفيل" });
+    }
 
-    const where = {
-      courierId: parseInt(courierId),
-      isDeleted: false,
-      isSettled: false,
-      shipmentStatus: {
-        in: ["تم التوصيل", "تسليم جزئي", "استبدال",
-             "مرتجع", "مرتجع للتاجر", "مرتجع للمستودع", "مرتجع جزئي", "مرتجع استبدال"],
+    const courier = await prisma.courier.findUnique({
+      where: { id: parseInt(courierId) },
+    });
+    if (!courier)
+      return res
+        .status(404)
+        .json({ success: false, error: "المندوب غير موجود" });
+
+    const shipmentIds = shipmentFees.map((f) => parseInt(f.id));
+    const shipments = await prisma.shipment.findMany({
+      where: {
+        id: { in: shipmentIds },
+        courierId: parseInt(courierId),
+        isDeleted: false,
+        isSettled: false,
       },
-    };
-
-    if (startDate) where.updatedAt = { ...(where.updatedAt || {}), gte: new Date(startDate) };
-    if (endDate)   where.updatedAt = { ...(where.updatedAt || {}), lte: new Date(endDate + "T23:59:59.999Z") };
-
-    const shipments = await prisma.shipment.findMany({ where, select: { id: true, deliveryCollectedAmount: true } });
+      select: { id: true, deliveryCollectedAmount: true },
+    });
 
     if (shipments.length === 0) {
       return res.json({ success: false, error: "لا توجد شحنات قابلة للتقفيل" });
     }
 
-    const feePerShipment = parseFloat(courier.deliveryFeePerShipment || 0);
-    const totalCollected  = shipments.reduce((sum, s) => sum + parseFloat(s.deliveryCollectedAmount || 0), 0);
-    const courierEarnings = shipments.length * feePerShipment;
-    const netHandover     = totalCollected - courierEarnings;
+    // Build a fee map for quick lookup
+    const feeMap = {};
+    for (const f of shipmentFees) {
+      feeMap[parseInt(f.id)] = parseFloat(f.courierFee) || 0;
+    }
 
+    const totalCollected = shipments.reduce(
+      (sum, s) => sum + parseFloat(s.deliveryCollectedAmount || 0),
+      0,
+    );
+    const courierEarnings = shipments.reduce(
+      (sum, s) => sum + (feeMap[s.id] || 0),
+      0,
+    );
+    const netHandover = totalCollected - courierEarnings;
+
+    // Use the date range of the actual shipments
     const settlement = await prisma.$transaction(async (tx) => {
       const s = await tx.courierSettlement.create({
         data: {
-          courierId:      parseInt(courierId),
-          periodFrom:     startDate ? new Date(startDate) : new Date(),
-          periodTo:       endDate   ? new Date(endDate + "T23:59:59.999Z") : new Date(),
-          shipmentCount:  shipments.length,
+          courierId: parseInt(courierId),
+          periodFrom: new Date(),
+          periodTo: new Date(),
+          shipmentCount: shipments.length,
           totalCollected: parseFloat(totalCollected.toFixed(2)),
-          courierEarnings:parseFloat(courierEarnings.toFixed(2)),
-          netHandover:    parseFloat(netHandover.toFixed(2)),
-          notes:          notes || null,
-          createdBy:      req.user?.id || null,
+          courierEarnings: parseFloat(courierEarnings.toFixed(2)),
+          netHandover: parseFloat(netHandover.toFixed(2)),
+          notes: notes || null,
+          createdBy: req.user?.id || null,
         },
       });
 
-      await tx.shipment.updateMany({
-        where: { id: { in: shipments.map(s => s.id) } },
-        data: { isSettled: true, settlementId: s.id },
-      });
+      // Update each shipment with its individual courierFee
+      for (const shipment of shipments) {
+        await tx.shipment.update({
+          where: { id: shipment.id },
+          data: {
+            isSettled: true,
+            settlementId: s.id,
+            courierFee: feeMap[shipment.id] || 0,
+          },
+        });
+      }
 
       return s;
     });

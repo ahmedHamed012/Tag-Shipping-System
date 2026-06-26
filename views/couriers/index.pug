@@ -129,7 +129,7 @@ block content
           displayCouriers(data.data);
           updatePagination(data.pagination);
           document.getElementById('courierCount').textContent = 
-            `إجمالي: ${data.pagination.total} ساعي`;
+            `إجمالي: ${data.pagination.total} مندوب`;
         }
       } catch (error) {
         console.error('Error:', error);
@@ -142,7 +142,7 @@ block content
       const tbody = document.getElementById('couriersList');
 
       if (couriers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">لا توجد ساعيين</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">لا توجد مندوبين</td></tr>';
         return;
       }
 
@@ -333,7 +333,7 @@ block content
 
           document.getElementById('courierForm').dataset.action = 'update';
           document.getElementById('courierModalTitle').innerHTML = 
-            '<i class="bi bi-pencil me-2"></i>تعديل ساعي';
+            '<i class="bi bi-pencil me-2"></i>تعديل مندوب';
 
           new bootstrap.Modal(document.getElementById('courierModal')).show();
         }
@@ -343,7 +343,7 @@ block content
     }
 
     async function deleteCourier(id, name) {
-      if (confirm(`هل تريد حذف الساعي: ${name}؟`)) {
+      if (confirm(`هل تريد حذف المندوب: ${name}؟`)) {
         try {
           const response = await fetch(`/couriers/api/delete/${id}`, {
             method: 'DELETE'

@@ -264,10 +264,17 @@ model Shipment {
 
   totalAmount Decimal @db.Decimal(10, 2)
 
+  // Fee breakdown (stored at creation time for auditability)
+  shippingCost   Decimal? @db.Decimal(10, 2)
+  extraWeightFee Decimal? @db.Decimal(10, 2)
+
   amountGained Decimal @db.Decimal(10, 2)
 
   // Amount collected during delivery
   deliveryCollectedAmount Decimal? @db.Decimal(10, 2)
+
+  // Fee paid to the courier for delivering this specific shipment (set during settlement)
+  courierFee Decimal? @db.Decimal(10, 2)
 
   //////////////////////////////////////////////////////
   // Delivery Outcome Information
