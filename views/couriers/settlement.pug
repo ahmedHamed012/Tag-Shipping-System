@@ -355,12 +355,13 @@ block content
     }
 
     const pn = s => s.policyNumber || ('SH-' + s.id);
+    const pnLink = s => `<a href="/shipments/${s.id}" style="text-decoration:underline;color:inherit"><span class="badge bg-info">${pn(s)}</span></a>`;
     const loc = s => [s.receiver?.governorate, s.receiver?.city].filter(Boolean).join(' - ') || '-';
     const amt = v => parseFloat(v || 0).toFixed(2);
 
     function rowDelivered(s) {
       return `<tr>
-        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${pnLink(s)}</td>
         <td>${s.receiver?.fullName || '-'}<br><small class="text-muted">${s.receiver?.phone1 || ''}</small></td>
         <td><small>${loc(s)}</small></td>
         <td class="text-end fw-bold text-success">${amt(s.deliveryCollectedAmount)} ج.م</td>
@@ -369,7 +370,7 @@ block content
 
     function rowPartialEx(s) {
       return `<tr>
-        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${pnLink(s)}</td>
         <td>${s.receiver?.fullName || '-'}</td>
         <td><span class="badge bg-secondary">${s.shipmentStatus}</span></td>
         <td class="text-end fw-bold text-warning">${amt(s.deliveryCollectedAmount)} ج.م</td>
@@ -378,7 +379,7 @@ block content
 
     function rowReturned(s) {
       return `<tr>
-        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${pnLink(s)}</td>
         <td>${s.receiver?.fullName || '-'}</td>
         <td><small>${loc(s)}</small></td>
         <td><span class="badge bg-danger">${s.shipmentStatus}</span></td>
@@ -387,7 +388,7 @@ block content
 
     function rowStillOut(s) {
       return `<tr>
-        <td><span class="badge bg-info">${pn(s)}</span></td>
+        <td>${pnLink(s)}</td>
         <td>${s.receiver?.fullName || '-'}</td>
         <td><small>${loc(s)}</small></td>
         <td class="text-end">${amt(s.totalAmount)} ج.م</td>

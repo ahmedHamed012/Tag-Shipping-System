@@ -296,7 +296,7 @@ block content
                 <tbody>
                   ${courier.shipments.map(ship => `
                     <tr>
-                      <td><small>${ship.policyNumber || ('SH-' + ship.id)}</small></td>
+                      <td><small><a href="/shipments/${ship.id}" style="text-decoration:underline;color:inherit">${ship.policyNumber || ('SH-' + ship.id)}</a></small></td>
                       <td><small>${ship.receiver?.fullName || '-'}</small></td>
                       <td><small><span class="badge bg-info">${ship.shipmentStatus || '-'}</span></small></td>
                     </tr>

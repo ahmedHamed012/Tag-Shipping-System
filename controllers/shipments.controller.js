@@ -828,3 +828,147 @@ exports.updateTotalAmount = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+/**
+ * Render shipment detail page
+ */
+exports.getShipmentPage = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const shipment = await prisma.shipment.findUnique({
+      where: { id: parseInt(id), isDeleted: false },
+      include: {
+        merchant: true,
+        receiver: true,
+        courier: { select: { id: true, fullName: true, phone: true } },
+        items: { where: { isDeleted: false } },
+        creator: { select: { id: true, fullName: true } },
+        lastModifier: { select: { id: true, fullName: true } },
+        parentShipment: { select: { id: true, policyNumber: true } },
+        childShipments: {
+          where: { isDeleted: false },
+          select: { id: true, policyNumber: true, shipmentStatus: true, shipmentType: true },
+        },
+      },
+    });
+
+    if (!shipment) {
+      return res.status(404).render('error', { error: 'الشحنة غير موجودة' });
+    }
+
+    const [logs, couriers] = await Promise.all([
+      prisma.log.findMany({
+        where: { entity: 'Shipment', entityId: parseInt(id) },
+        include: { user: { select: { id: true, fullName: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.courier.findMany({
+        where: { isDeleted: false, isActive: true },
+        select: { id: true, fullName: true, courierType: true },
+        orderBy: { fullName: 'asc' },
+      }),
+    ]);
+
+    res.render('Shipments/detail', { shipment, logs, couriers });
+  } catch (error) {
+    console.error('Error fetching shipment detail:', error);
+    res.status(500).render('error', { error: error.message });
+  }
+};
+
+/**
+ * Update shipment general data (receiver info, shipment options, items)
+ */
+exports.updateShipment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      isOpenable,
+      isFastDelivery,
+      amountGained,
+      totalAmount,
+      additionalNotes,
+      items,
+      receiver,
+    } = req.body;
+
+    const shipment = await prisma.shipment.findUnique({
+      where: { id: parseInt(id), isDeleted: false },
+      include: { receiver: true, items: { where: { isDeleted: false } } },
+    });
+
+    if (!shipment) {
+      return res.json({ success: false, error: 'الشحنة غير موجودة' });
+    }
+
+    const changedFields = {};
+
+    await prisma.$transaction(async (tx) => {
+      if (receiver) {
+        const receiverUpdate = {};
+        if (receiver.fullName !== undefined && receiver.fullName !== shipment.receiver.fullName) { receiverUpdate.fullName = receiver.fullName; changedFields.fullName = { from: shipment.receiver.fullName, to: receiver.fullName }; }
+        if (receiver.phone1 !== undefined && receiver.phone1 !== shipment.receiver.phone1) { receiverUpdate.phone1 = receiver.phone1; changedFields.phone1 = { from: shipment.receiver.phone1, to: receiver.phone1 }; }
+        if (receiver.phone2 !== undefined && receiver.phone2 !== shipment.receiver.phone2) { receiverUpdate.phone2 = receiver.phone2; changedFields.phone2 = { from: shipment.receiver.phone2, to: receiver.phone2 }; }
+        if (receiver.address !== undefined && receiver.address !== shipment.receiver.address) { receiverUpdate.address = receiver.address; changedFields.address = { from: shipment.receiver.address, to: receiver.address }; }
+        if (receiver.governorate !== undefined && receiver.governorate !== shipment.receiver.governorate) { receiverUpdate.governorate = receiver.governorate; changedFields.governorate = { from: shipment.receiver.governorate, to: receiver.governorate }; }
+        if (receiver.city !== undefined && receiver.city !== shipment.receiver.city) { receiverUpdate.city = receiver.city; changedFields.city = { from: shipment.receiver.city, to: receiver.city }; }
+        if (receiver.notes !== undefined && receiver.notes !== shipment.receiver.notes) { receiverUpdate.notes = receiver.notes; changedFields.receiverNotes = { from: shipment.receiver.notes, to: receiver.notes }; }
+
+        if (Object.keys(receiverUpdate).length > 0) {
+          receiverUpdate.lastModifiedBy = req.user?.id || null;
+          await tx.receiver.update({ where: { id: shipment.receiverId }, data: receiverUpdate });
+        }
+      }
+
+      const shipmentUpdate = { lastModifiedBy: req.user?.id || null };
+      const openable = isOpenable === 'true' || isOpenable === true;
+      if (openable !== shipment.isOpenable) { shipmentUpdate.isOpenable = openable; changedFields.isOpenable = { from: shipment.isOpenable, to: openable }; }
+      const fastDel = isFastDelivery === 'true' || isFastDelivery === true;
+      if (fastDel !== shipment.isFastDelivery) { shipmentUpdate.isFastDelivery = fastDel; changedFields.isFastDelivery = { from: shipment.isFastDelivery, to: fastDel }; }
+      if (amountGained !== undefined && parseFloat(amountGained) !== parseFloat(shipment.amountGained)) { shipmentUpdate.amountGained = parseFloat(amountGained); changedFields.amountGained = { from: parseFloat(shipment.amountGained), to: parseFloat(amountGained) }; }
+      if (additionalNotes !== undefined && additionalNotes !== shipment.additionalNotes) { shipmentUpdate.additionalNotes = additionalNotes || null; changedFields.additionalNotes = { from: shipment.additionalNotes, to: additionalNotes }; }
+      if (totalAmount !== undefined) {
+        const newTotal = parseFloat(totalAmount);
+        if (!isNaN(newTotal) && newTotal !== parseFloat(shipment.totalAmount)) { shipmentUpdate.totalAmount = newTotal; changedFields.totalAmount = { from: parseFloat(shipment.totalAmount), to: newTotal }; }
+      }
+
+      await tx.shipment.update({ where: { id: parseInt(id) }, data: shipmentUpdate });
+
+      if (Array.isArray(items)) {
+        await tx.shipmentItem.updateMany({ where: { shipmentId: parseInt(id) }, data: { isDeleted: true } });
+        for (const item of items) {
+          await tx.shipmentItem.create({
+            data: {
+              shipmentId: parseInt(id),
+              productName: item.productName,
+              productDescription: item.productDescription || null,
+              netWeight: item.netWeight ? parseFloat(item.netWeight) : null,
+              size: item.size || null,
+              count: parseInt(item.count) || 1,
+              price: parseFloat(item.price) || 0,
+              createdBy: req.user?.id || null,
+            },
+          });
+        }
+        changedFields.items = 'updated';
+      }
+
+      await tx.log.create({
+        data: {
+          action: 'UPDATE_SHIPMENT',
+          entity: 'Shipment',
+          entityId: parseInt(id),
+          details: JSON.stringify({ changedFields }),
+          userId: req.user?.id || 1,
+          ipAddress: req.ip,
+        },
+      });
+    });
+
+    res.json({ success: true, message: 'تم تحديث بيانات الشحنة بنجاح' });
+  } catch (error) {
+    console.error('Error updating shipment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

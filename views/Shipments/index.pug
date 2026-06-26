@@ -110,8 +110,9 @@ block content
               each shipment in shipments
                 tr
                   td.text-center.fw-bold
-                    span.badge.bg-info
-                      = shipment.policyNumber || ("SH-" + shipment.id)
+                    a(href="/shipments/" + shipment.id style="text-decoration:underline;color:inherit")
+                      span.badge.bg-info
+                        = shipment.policyNumber || ("SH-" + shipment.id)
                   td= shipment.merchant.name
                   td= shipment.receiver.fullName
                   td= shipment.receiver.phone1

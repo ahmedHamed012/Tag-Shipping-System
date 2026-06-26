@@ -13,6 +13,16 @@ router.get("/", shipmentsController.getAllShipments);
 router.get("/create", shipmentsController.createShipmentForm);
 
 /**
+ * GET /shipments/:id - Shipment detail page
+ */
+router.get("/:id", shipmentsController.getShipmentPage);
+
+/**
+ * PUT /shipments/api/update/:id - Update shipment general data
+ */
+router.put("/api/update/:id", shipmentsController.updateShipment);
+
+/**
  * GET /shipments/api/search-receiver - Search receiver by phone
  */
 router.get("/api/search-receiver", shipmentsController.searchReceiver);

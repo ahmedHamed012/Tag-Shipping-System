@@ -240,7 +240,7 @@ block content
         return `
           <tr>
             <td>${index + 1}</td>
-            <td><strong>${shipment.policyNumber || ('SH-' + shipment.id)}</strong></td>
+            <td><a href="/shipments/${shipment.id}" style="text-decoration:underline;color:inherit"><strong>${shipment.policyNumber || ('SH-' + shipment.id)}</strong></a></td>
             <td>${shipment.receiver?.fullName || '-'}</td>
             <td>${shipment.receiver?.address || '-'}</td>
             <td>${shipment.amountGained || 0} كجم</td>
@@ -267,7 +267,7 @@ block content
         return `
           <tr>
             <td>${index + 1}</td>
-            <td><strong>${shipment.policyNumber || ('SH-' + shipment.id)}</strong></td>
+            <td><a href="/shipments/${shipment.id}" style="text-decoration:underline;color:inherit"><strong>${shipment.policyNumber || ('SH-' + shipment.id)}</strong></a></td>
             <td>${shipment.receiver?.fullName || '-'}</td>
             <td>${shipment.receiver?.address || '-'}</td>
             <td>${shipment.amountGained || 0} كجم</td>

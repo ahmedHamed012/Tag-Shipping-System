@@ -1,0 +1,690 @@
+extends ../layouts/layout
+
+block content
+  - var statusColors = {"طلب بيك اب":"warning","تم الاستقبال":"info","قيد التوصيل":"primary","تم التوصيل":"success","تسليم جزئي":"warning","استبدال":"info","مرتجع مع دفع الشحن":"secondary","رفض التسليم مع دفع الشحن":"secondary","ملغاة":"danger","مؤجل":"secondary","مرتجع للمستودع":"dark","مرتجع":"dark","مرتجع للتاجر":"dark","مرتجع جزئي":"warning","مرتجع استبدال":"info"}
+  - var statusColor = statusColors[shipment.shipmentStatus] || "secondary"
+
+  .container-fluid.py-4
+
+    //- ── Header ──────────────────────────────────────────────────────────
+    .d-flex.align-items-center.gap-3.mb-4.flex-wrap
+      a.btn.btn-outline-secondary.btn-sm(href="/shipments")
+        i.bi.bi-arrow-right.me-1
+        | العودة للشحنات
+      h1.mb-0.flex-grow-1
+        i.bi.bi-box-seam-fill.me-2
+        span= shipment.policyNumber || ("SH-" + shipment.id)
+      span.badge.fs-6(class="bg-" + statusColor)= shipment.shipmentStatus
+      button#toggleStatusBtn.btn.btn-outline-primary(onclick="toggleStatus()")
+        i.bi.bi-arrow-repeat.me-2
+        | تحديث الحالة
+      button#toggleEditBtn.btn.btn-primary(onclick="toggleEdit()")
+        i.bi.bi-pencil-square.me-2
+        | تعديل البيانات
+
+    //- ── Status Update Section (collapsed by default) ────────────────────
+    #statusSection.card.mb-4.border-primary(style="display:none")
+      .card-header.bg-primary.text-white
+        h6.mb-0
+          i.bi.bi-arrow-repeat.me-2
+          | تحديث حالة الشحنة
+      .card-body
+        .row.g-3.align-items-end
+          .col-md-4
+            label.form-label الحالة الحالية
+            p.fw-bold.mb-0.py-2
+              span.badge.fs-6(class="bg-" + statusColor)= shipment.shipmentStatus
+          .col-md-4
+            label.form-label الحالة الجديدة
+            select.form-select#newStatus(onchange="onStatusChange()")
+              option(value="") اختر الحالة
+          .col-md-4#statusCourierDeliveryField(style="display:none")
+            label.form-label مندوب التوصيل
+            select.form-select#deliveryCourier
+              option(value="") اختر المندوب
+              each c in couriers
+                option(value=c.id)= c.fullName
+          .col-md-4#statusCourierPickupField(style="display:none")
+            label.form-label مندوب الاستلام
+            select.form-select#pickupCourier
+              option(value="") اختر المندوب
+              each c in couriers
+                option(value=c.id)= c.fullName
+          .col-md-4#statusCollectedField(style="display:none")
+            label.form-label المبلغ المحصل من العميل
+            input.form-control#collectedAmount(type="number" min="0" step="0.01" placeholder="0.00")
+          .col-md-4#statusShippingField(style="display:none")
+            label.form-label مبلغ الشحن المحصل
+            input.form-control#shippingAmount(type="number" min="0" step="0.01" placeholder="0.00")
+        .d-flex.gap-2.justify-content-end.mt-3
+          button.btn.btn-secondary(type="button" onclick="toggleStatus()") إلغاء
+          button.btn.btn-success(type="button" onclick="saveStatus()")
+            i.bi.bi-check-lg.me-1
+            | حفظ الحالة
+
+    //- ── Inline Edit Form (collapsed by default) ─────────────────────────
+    #editFormSection.card.mb-4(style="display:none")
+      .card-header.bg-primary.text-white
+        h6.mb-0
+          i.bi.bi-pencil.me-2
+          | تعديل بيانات الشحنة
+      .card-body
+
+        h6.text-muted.mb-3 بيانات المستلم
+        .row.g-3
+          .col-md-4
+            label.form-label اسم المستلم
+            input.form-control#editFullName(type="text" value=shipment.receiver.fullName)
+          .col-md-4
+            label.form-label هاتف 1
+            input.form-control#editPhone1(type="text" value=shipment.receiver.phone1)
+          .col-md-4
+            label.form-label هاتف 2
+            input.form-control#editPhone2(type="text" value=shipment.receiver.phone2 || "")
+          .col-md-4
+            label.form-label المحافظة
+            select.form-select#editGovernorate(onchange="onGovernorateChange()")
+              option(value="") -- اختر المحافظة --
+          .col-md-4
+            label.form-label المدينة / المنطقة
+            select.form-select#editCity(onchange="onCityChange()")
+              option(value="") -- اختر المدينة --
+          .col-md-4
+            label.form-label العنوان
+            input.form-control#editAddress(type="text" value=shipment.receiver.address || "")
+          .col-12
+            label.form-label ملاحظات المستلم
+            textarea.form-control#editReceiverNotes(rows="2")= shipment.receiver.notes || ""
+
+        hr.my-4
+
+        h6.text-muted.mb-3 بيانات الشحنة
+        .row.g-3
+          .col-md-4
+            label.form-label
+              | رقم الوثيقة (Policy Number)
+              span.badge.bg-secondary.ms-2.small تلقائي
+            input.form-control(type="text" value=shipment.policyNumber || "" readonly disabled style="background:#f8f9fa;cursor:not-allowed")
+          .col-md-4
+            label.form-label الوزن (كجم)
+            input.form-control#editAmountGained(type="number" step="0.01" value=parseFloat(shipment.amountGained) onchange="recalculateFee()")
+          .col-md-4
+            label.form-label ملاحظات إضافية
+            input.form-control#editAdditionalNotes(type="text" value=shipment.additionalNotes || "")
+          .col-md-3
+            .form-check.mt-4
+              input.form-check-input#editIsOpenable(type="checkbox" checked=shipment.isOpenable)
+              label.form-check-label(for="editIsOpenable") يمكن الفتح والفحص
+          .col-md-3
+            .form-check.mt-4
+              input.form-check-input#editIsFastDelivery(type="checkbox" checked=shipment.isFastDelivery onchange="recalculateFee()")
+              label.form-check-label(for="editIsFastDelivery") توصيل سريع
+
+        //- Fee recalculation card
+        .card.mt-3.border-success
+          .card-header.bg-success.text-white.py-2
+            .d-flex.justify-content-between.align-items-center
+              span
+                i.bi.bi-calculator.me-2
+                | رسوم الشحن
+              button.btn.btn-sm.btn-light(type="button" onclick="recalculateFee()")
+                i.bi.bi-arrow-repeat.me-1
+                | إعادة الحساب
+          .card-body.py-2
+            .row.g-3.align-items-end
+              .col-md-4
+                label.form-label.small.text-muted سعر الشحن المحسوب
+                .input-group
+                  input.form-control#calcShippingCost(type="number" step="0.01" value=parseFloat(shipment.totalAmount) placeholder="0.00")
+                  span.input-group-text ج.م
+              .col-md-4
+                label.form-label.small.text-muted إجمالي المبلغ (قابل للتعديل)
+                .input-group
+                  input.form-control#editTotalAmount(type="number" step="0.01" value=parseFloat(shipment.totalAmount) placeholder="0.00")
+                  span.input-group-text ج.م
+              .col-md-4
+                #feeCalcInfo.small.text-muted.mt-2
+
+        hr.my-4
+
+        h6.text-muted.mb-3 المنتجات
+        #editItemsContainer
+          each item in shipment.items
+            .edit-item-row.row.g-2.mb-2.align-items-end
+              .col-md-3
+                label.form-label.small اسم المنتج
+                input.form-control.form-control-sm.item-name(type="text" value=item.productName onchange="updateProductsTotal()")
+              .col-md-2
+                label.form-label.small الكمية
+                input.form-control.form-control-sm.item-count(type="number" min="1" value=item.count onchange="updateProductsTotal()")
+              .col-md-2
+                label.form-label.small السعر
+                input.form-control.form-control-sm.item-price(type="number" step="0.01" value=parseFloat(item.price) onchange="updateProductsTotal()")
+              .col-md-2
+                label.form-label.small الوزن
+                input.form-control.form-control-sm.item-weight(type="number" step="0.01" value=item.netWeight ? parseFloat(item.netWeight) : "")
+              .col-md-2
+                label.form-label.small الحجم
+                input.form-control.form-control-sm.item-size(type="text" value=item.size || "")
+              .col-md-1.d-flex.align-items-end
+                button.btn.btn-sm.btn-outline-danger.w-100(type="button" onclick="removeItemRow(this)") ×
+
+        button.btn.btn-sm.btn-outline-secondary.mt-2(type="button" onclick="addItemRow()")
+          i.bi.bi-plus.me-1
+          | إضافة منتج
+
+        .d-flex.gap-2.justify-content-end.mt-4
+          button.btn.btn-secondary(type="button" onclick="toggleEdit()") إلغاء
+          button.btn.btn-success(type="button" onclick="submitEdit()")
+            i.bi.bi-check-lg.me-1
+            | حفظ التعديلات
+
+    //- ── Info Cards ───────────────────────────────────────────────────────
+    .row.g-4.mb-4
+
+      .col-lg-4
+        .card.h-100
+          .card-header
+            h6.mb-0
+              i.bi.bi-shop.me-2
+              | بيانات التاجر
+          .card-body
+            dl.row.mb-0
+              dt.col-5 الاسم
+              dd.col-7= shipment.merchant.name
+              dt.col-5 الهاتف
+              dd.col-7= shipment.merchant.phone
+              dt.col-5 العنوان
+              dd.col-7= shipment.merchant.address || "-"
+
+      .col-lg-4
+        .card.h-100
+          .card-header
+            h6.mb-0
+              i.bi.bi-person.me-2
+              | بيانات المستلم
+          .card-body
+            dl.row.mb-0
+              dt.col-5 الاسم
+              dd.col-7= shipment.receiver.fullName
+              dt.col-5 هاتف 1
+              dd.col-7= shipment.receiver.phone1
+              if shipment.receiver.phone2
+                dt.col-5 هاتف 2
+                dd.col-7= shipment.receiver.phone2
+              dt.col-5 المحافظة
+              dd.col-7= shipment.receiver.governorate || "-"
+              dt.col-5 المدينة
+              dd.col-7= shipment.receiver.city || "-"
+              dt.col-5 العنوان
+              dd.col-7= shipment.receiver.address || "-"
+              if shipment.receiver.notes
+                dt.col-5 ملاحظات
+                dd.col-7= shipment.receiver.notes
+
+      .col-lg-4
+        .card.h-100
+          .card-header
+            h6.mb-0
+              i.bi.bi-info-circle.me-2
+              | تفاصيل الشحنة
+          .card-body
+            dl.row.mb-0
+              dt.col-6 رقم الوثيقة
+              dd.col-6
+                span.badge.bg-info= shipment.policyNumber || ("SH-" + shipment.id)
+              dt.col-6 نوع الشحنة
+              dd.col-6= shipment.shipmentType === "normal" ? "عادية" : shipment.shipmentType === "partial_return" ? "مرتجع جزئي" : "استبدال"
+              dt.col-6 الوزن
+              dd.col-6= parseFloat(shipment.amountGained).toFixed(2) + " كجم"
+              dt.col-6 المبلغ الإجمالي
+              dd.col-6.fw-bold= parseFloat(shipment.totalAmount).toFixed(2) + " ج.م"
+              if shipment.deliveryCollectedAmount
+                dt.col-6 المحصل
+                dd.col-6.text-success= parseFloat(shipment.deliveryCollectedAmount).toFixed(2) + " ج.م"
+              dt.col-6 يمكن الفتح
+              dd.col-6
+                span.badge(class=shipment.isOpenable ? "bg-success" : "bg-secondary")= shipment.isOpenable ? "نعم" : "لا"
+              dt.col-6 توصيل سريع
+              dd.col-6
+                span.badge(class=shipment.isFastDelivery ? "bg-warning text-dark" : "bg-secondary")= shipment.isFastDelivery ? "نعم" : "لا"
+              if shipment.courier
+                dt.col-6 المندوب
+                dd.col-6= shipment.courier.fullName
+              dt.col-6 تاريخ الإنشاء
+              dd.col-6= new Date(shipment.createdAt).toLocaleString("ar-EG")
+              dt.col-6 آخر تحديث
+              dd.col-6= new Date(shipment.updatedAt).toLocaleString("ar-EG")
+              if shipment.creator
+                dt.col-6 أنشأها
+                dd.col-6= shipment.creator.fullName
+              if shipment.lastModifier
+                dt.col-6 آخر تعديل
+                dd.col-6= shipment.lastModifier.fullName
+              if shipment.additionalNotes
+                dt.col-6 ملاحظات
+                dd.col-6= shipment.additionalNotes
+
+    //- ── Products Table ───────────────────────────────────────────────────
+    if shipment.items && shipment.items.length > 0
+      .card.mb-4
+        .card-header
+          h6.mb-0
+            i.bi.bi-box.me-2
+            | المنتجات
+        .card-body.p-0
+          .table-responsive
+            table.table.table-sm.mb-0
+              thead.table-light
+                tr
+                  th المنتج
+                  th.text-center الكمية
+                  th.text-center الوزن
+                  th.text-center الحجم
+                  th.text-end السعر
+              tbody
+                each item in shipment.items
+                  tr
+                    td
+                      div= item.productName
+                      if item.productDescription
+                        small.text-muted= item.productDescription
+                    td.text-center= item.count
+                    td.text-center= item.netWeight ? parseFloat(item.netWeight).toFixed(2) + " كجم" : "-"
+                    td.text-center= item.size || "-"
+                    td.text-end= parseFloat(item.price).toFixed(2) + " ج.م"
+
+    //- ── Related Shipments ────────────────────────────────────────────────
+    if shipment.parentShipment || (shipment.childShipments && shipment.childShipments.length > 0)
+      .card.mb-4
+        .card-header
+          h6.mb-0
+            i.bi.bi-diagram-3.me-2
+            | شحنات مرتبطة
+        .card-body
+          if shipment.parentShipment
+            .mb-2
+              span.text-muted.me-2 الشحنة الأصل:
+              a(href="/shipments/" + shipment.parentShipment.id)
+                span.badge.bg-secondary= shipment.parentShipment.policyNumber || ("SH-" + shipment.parentShipment.id)
+          if shipment.childShipments && shipment.childShipments.length > 0
+            .mt-2
+              span.text-muted.me-2 الشحنات الفرعية:
+              each child in shipment.childShipments
+                a.me-2(href="/shipments/" + child.id)
+                  span.badge.bg-info= child.policyNumber || ("SH-" + child.id)
+                  span.badge.ms-1(class="bg-" + (statusColors[child.shipmentStatus] || "secondary"))= child.shipmentStatus
+
+    //- ── History Timeline ─────────────────────────────────────────────────
+    .card
+      .card-header
+        h6.mb-0
+          i.bi.bi-clock-history.me-2
+          | سجل العمليات
+      .card-body
+        if logs && logs.length > 0
+          .timeline
+            each log in logs
+              - var details = {}
+              - try { details = JSON.parse(log.details || "{}") } catch(e) {}
+              .timeline-item.d-flex.gap-3.mb-3
+                .timeline-icon.flex-shrink-0
+                  - var iconMap = { "إنشاء شحنة جديدة": "bi-plus-circle-fill text-success", "UPDATE_SHIPMENT_STATUS": "bi-arrow-repeat text-primary", "UPDATE_SHIPMENT": "bi-pencil-fill text-warning", "DELETE_SHIPMENT": "bi-trash-fill text-danger" }
+                  - var icon = iconMap[log.action] || "bi-circle-fill text-secondary"
+                  i(class="bi " + icon style="font-size:1.3rem; margin-top:2px")
+                .timeline-body.flex-grow-1
+                  .d-flex.justify-content-between.align-items-start
+                    div
+                      strong= log.action === "إنشاء شحنة جديدة" ? "تم إنشاء الشحنة" : log.action === "UPDATE_SHIPMENT_STATUS" ? "تغيير الحالة" : log.action === "UPDATE_SHIPMENT" ? "تعديل البيانات" : log.action === "DELETE_SHIPMENT" ? "حذف الشحنة" : log.action
+                      if log.action === "UPDATE_SHIPMENT_STATUS" && details.fromStatus
+                        .mt-1
+                          span.badge.bg-secondary.me-1= details.fromStatus
+                          i.bi.bi-arrow-left
+                          span.badge.bg-primary.ms-1= details.toStatus
+                          if details.collectedAmount
+                            span.text-muted.ms-2.small المحصل: #{parseFloat(details.collectedAmount).toFixed(2)} ج.م
+                      if log.action === "UPDATE_SHIPMENT" && details.changedFields
+                        .mt-1.small.text-muted
+                          each val, key in details.changedFields
+                            if key !== "items"
+                              span.me-3
+                                | #{key}:
+                                span.text-decoration-line-through.me-1= val.from || "-"
+                                | →
+                                span.ms-1.text-dark= val.to || "-"
+                            else
+                              span.me-3 تم تحديث المنتجات
+                    small.text-muted= new Date(log.createdAt).toLocaleString("ar-EG")
+                  small.text-muted
+                    | بواسطة:
+                    = " " + (log.user ? log.user.fullName : "النظام")
+        else
+          .text-center.text-muted.py-3 لا توجد سجلات لهذه الشحنة
+
+  style.
+    .timeline { border-right: 2px solid #e9ecef; padding-right: 16px; }
+    .timeline-item { position: relative; }
+    .timeline-item::before { content: ''; position: absolute; right: -21px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #e9ecef; border: 2px solid #fff; }
+    .timeline-icon { width: 32px; text-align: center; }
+
+  script.
+    const SHIPMENT_ID     = !{shipment.id};
+    const MERCHANT_ID     = '!{shipment.merchantId}';
+    const MAX_WEIGHT      = !{parseFloat(shipment.merchant.maxShipmentWeight || 0)};
+    const EXTRA_WEIGHT_FEE= !{parseFloat(shipment.merchant.extraWeightFeePerKg || 0)};
+    const CURRENT_STATUS  = '!{shipment.shipmentStatus}';
+
+    const ALLOWED_TRANSITIONS = {
+      'طلب بيك اب':                   ['تم الاستقبال'],
+      'تم الاستقبال':                  ['قيد التوصيل', 'ملغاة'],
+      'قيد التوصيل':                   ['تم التوصيل', 'تسليم جزئي', 'استبدال', 'مرتجع مع دفع الشحن', 'رفض التسليم مع دفع الشحن', 'مؤجل'],
+      'مرتجع مع دفع الشحن':            ['تم الاستقبال'],
+      'رفض التسليم مع دفع الشحن':      ['مرتجع للمستودع'],
+      'مؤجل':                          ['مرتجع للمستودع'],
+      'مرتجع للمستودع':                ['مرتجع', 'مرتجع للتاجر'],
+      'مرتجع جزئي':                    ['مرتجع للمستودع'],
+      'مرتجع استبدال':                 ['تم الاستقبال'],
+    };
+    const REQUIRES_PICKUP_COURIER_FROM = ['مرتجع مع دفع الشحن', 'مرتجع استبدال'];
+
+    // ── Status Section ────────────────────────────────────────────────────
+
+    function toggleStatus() {
+      const s = document.getElementById('statusSection');
+      const btn = document.getElementById('toggleStatusBtn');
+      if (s.style.display === 'none') {
+        // close edit if open
+        document.getElementById('editFormSection').style.display = 'none';
+        document.getElementById('toggleEditBtn').innerHTML = '<i class="bi bi-pencil-square me-2"></i>تعديل البيانات';
+        document.getElementById('toggleEditBtn').className = 'btn btn-primary';
+
+        // populate allowed statuses
+        const allowed = ALLOWED_TRANSITIONS[CURRENT_STATUS] || [];
+        const sel = document.getElementById('newStatus');
+        sel.innerHTML = allowed.length
+          ? '<option value="">اختر الحالة</option>' + allowed.map(x => `<option value="${x}">${x}</option>`).join('')
+          : '<option value="">لا توجد حالات متاحة للتغيير</option>';
+        sel.disabled = allowed.length === 0;
+
+        s.style.display = '';
+        s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        btn.innerHTML = '<i class="bi bi-x-lg me-2"></i>إلغاء';
+        btn.className = 'btn btn-outline-secondary';
+      } else {
+        s.style.display = 'none';
+        btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>تحديث الحالة';
+        btn.className = 'btn btn-outline-primary';
+        resetStatusFields();
+      }
+    }
+
+    function onStatusChange() {
+      const newStatus = document.getElementById('newStatus').value;
+      resetStatusFields();
+      if (newStatus === 'تسليم جزئي')
+        document.getElementById('statusCollectedField').style.display = '';
+      if (newStatus === 'مرتجع مع دفع الشحن')
+        document.getElementById('statusShippingField').style.display = '';
+      if (newStatus === 'تم الاستقبال' && REQUIRES_PICKUP_COURIER_FROM.includes(CURRENT_STATUS))
+        document.getElementById('statusCourierPickupField').style.display = '';
+      if (newStatus === 'قيد التوصيل')
+        document.getElementById('statusCourierDeliveryField').style.display = '';
+    }
+
+    function resetStatusFields() {
+      ['statusCourierDeliveryField','statusCourierPickupField','statusCollectedField','statusShippingField']
+        .forEach(id => document.getElementById(id).style.display = 'none');
+      document.getElementById('collectedAmount').value = '';
+      document.getElementById('shippingAmount').value = '';
+      document.getElementById('pickupCourier').value = '';
+      document.getElementById('deliveryCourier').value = '';
+    }
+
+    async function saveStatus() {
+      const newStatus = document.getElementById('newStatus').value;
+      if (!newStatus) { showToast('error', 'اختر الحالة الجديدة'); return; }
+
+      const body = { shipmentStatus: newStatus };
+
+      if (newStatus === 'تسليم جزئي') {
+        const amt = document.getElementById('collectedAmount').value;
+        if (!amt) { showToast('error', 'أدخل المبلغ المحصل من العميل'); return; }
+        body.collectedAmount = parseFloat(amt);
+      }
+      if (newStatus === 'مرتجع مع دفع الشحن') {
+        const amt = document.getElementById('shippingAmount').value;
+        if (!amt) { showToast('error', 'أدخل مبلغ الشحن المحصل'); return; }
+        body.collectedAmount = parseFloat(amt);
+      }
+      if (newStatus === 'تم الاستقبال' && REQUIRES_PICKUP_COURIER_FROM.includes(CURRENT_STATUS)) {
+        const c = document.getElementById('pickupCourier').value;
+        if (!c) { showToast('error', 'حدد مندوب الاستلام'); return; }
+        body.courierId = parseInt(c);
+      }
+      if (newStatus === 'قيد التوصيل') {
+        const c = document.getElementById('deliveryCourier').value;
+        if (!c) { showToast('error', 'حدد مندوب التوصيل'); return; }
+        body.courierId = parseInt(c);
+      }
+
+      try {
+        const res = await fetch(`/shipments/api/update-status/${SHIPMENT_ID}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.success) { showToast('success', data.message); setTimeout(() => location.reload(), 1200); }
+        else showToast('error', data.error || 'حدث خطأ');
+      } catch(e) { showToast('error', 'تعذر الاتصال بالخادم'); }
+    }
+
+    // ── Edit Section ──────────────────────────────────────────────────────
+
+    function toggleEdit() {
+      const section = document.getElementById('editFormSection');
+      const btn = document.getElementById('toggleEditBtn');
+      if (section.style.display === 'none') {
+        // close status if open
+        document.getElementById('statusSection').style.display = 'none';
+        document.getElementById('toggleStatusBtn').innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>تحديث الحالة';
+        document.getElementById('toggleStatusBtn').className = 'btn btn-outline-primary';
+
+        section.style.display = '';
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        btn.innerHTML = '<i class="bi bi-x-lg me-2"></i>إلغاء التعديل';
+        btn.className = 'btn btn-secondary';
+
+        loadGovernorates();
+      } else {
+        section.style.display = 'none';
+        btn.innerHTML = '<i class="bi bi-pencil-square me-2"></i>تعديل البيانات';
+        btn.className = 'btn btn-primary';
+      }
+    }
+
+    // ── Governorate / City Dropdowns ──────────────────────────────────────
+
+    const CURRENT_GOV  = '!{shipment.receiver.governorate || ""}';
+    const CURRENT_CITY = '!{shipment.receiver.city || ""}';
+
+    async function loadGovernorates() {
+      const sel = document.getElementById('editGovernorate');
+      if (sel.options.length > 1) return; // already loaded
+      try {
+        const res  = await fetch('/countries/api/governorates-dropdown');
+        const data = await res.json();
+        if (!data.success) return;
+        sel.innerHTML = '<option value="">-- اختر المحافظة --</option>';
+        data.data.forEach(g => {
+          const opt = document.createElement('option');
+          opt.value = g.nameAr;
+          opt.dataset.id = g.id;
+          opt.textContent = g.nameAr;
+          if (g.nameAr === CURRENT_GOV) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        if (CURRENT_GOV) await loadCities(CURRENT_GOV, CURRENT_CITY);
+      } catch(e) { console.error(e); }
+    }
+
+    async function onGovernorateChange() {
+      const sel = document.getElementById('editGovernorate');
+      const gov = sel.value;
+      document.getElementById('editCity').innerHTML = '<option value="">-- اختر المدينة --</option>';
+      if (gov) await loadCities(gov, '');
+      recalculateFee();
+    }
+
+    async function onCityChange() {
+      recalculateFee();
+    }
+
+    async function loadCities(governorateName, selectCity) {
+      const govSel = document.getElementById('editGovernorate');
+      const selected = [...govSel.options].find(o => o.value === governorateName);
+      if (!selected) return;
+      const govId = selected.dataset.id;
+      try {
+        const res  = await fetch(`/countries/api/cities/${govId}`);
+        const data = await res.json();
+        if (!data.success) return;
+        const citySel = document.getElementById('editCity');
+        citySel.innerHTML = '<option value="">-- اختر المدينة --</option>';
+        data.cities.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.nameAr;
+          opt.textContent = c.nameAr;
+          if (c.nameAr === selectCity) opt.selected = true;
+          citySel.appendChild(opt);
+        });
+        if (selectCity) recalculateFee();
+      } catch(e) { console.error(e); }
+    }
+
+    // ── Fee Recalculation ─────────────────────────────────────────────────
+
+    async function recalculateFee() {
+      const gov  = document.getElementById('editGovernorate').value;
+      const city = document.getElementById('editCity').value;
+      if (!gov || !city) return;
+
+      const weight   = parseFloat(document.getElementById('editAmountGained').value) || 0;
+      const fastDel  = document.getElementById('editIsFastDelivery').checked;
+
+      // collect items for products total
+      const items = [];
+      document.querySelectorAll('.edit-item-row').forEach(row => {
+        const price = parseFloat(row.querySelector('.item-price').value) || 0;
+        const count = parseInt(row.querySelector('.item-count').value) || 1;
+        items.push({ price, count });
+      });
+      const productsTotal = items.reduce((s, i) => s + i.price * i.count, 0);
+
+      try {
+        const res  = await fetch('/shipments/api/calculate-quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ merchantId: MERCHANT_ID, governorate: gov, city, amountGained: weight, isFastDelivery: fastDel, items }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          const shipping = parseFloat(data.shippingCost   || 0);
+          const total    = parseFloat(data.shipmentTotal  || 0);
+          document.getElementById('calcShippingCost').value = shipping.toFixed(2);
+          document.getElementById('editTotalAmount').value  = total.toFixed(2);
+          let info = `رسوم الشحن: ${shipping.toFixed(2)} ج.م`;
+          if (fastDel) info += ' (× 1.5 توصيل سريع)';
+          if (MAX_WEIGHT > 0 && weight > MAX_WEIGHT && EXTRA_WEIGHT_FEE > 0)
+            info += ` + ${((weight - MAX_WEIGHT) * EXTRA_WEIGHT_FEE).toFixed(2)} ج.م وزن إضافي`;
+          if (productsTotal > 0) info += ` + ${productsTotal.toFixed(2)} ج.م منتجات`;
+          document.getElementById('feeCalcInfo').textContent = info;
+        } else {
+          document.getElementById('feeCalcInfo').textContent = 'لا توجد قائمة أسعار لهذه المنطقة';
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    function updateProductsTotal() {
+      recalculateFee();
+    }
+
+    // ── Items ─────────────────────────────────────────────────────────────
+
+    function addItemRow() {
+      const container = document.getElementById('editItemsContainer');
+      const row = document.createElement('div');
+      row.className = 'edit-item-row row g-2 mb-2 align-items-end';
+      row.innerHTML = `
+        <div class="col-md-3"><label class="form-label small">اسم المنتج</label><input class="form-control form-control-sm item-name" type="text" onchange="updateProductsTotal()"></div>
+        <div class="col-md-2"><label class="form-label small">الكمية</label><input class="form-control form-control-sm item-count" type="number" min="1" value="1" onchange="updateProductsTotal()"></div>
+        <div class="col-md-2"><label class="form-label small">السعر</label><input class="form-control form-control-sm item-price" type="number" step="0.01" value="0" onchange="updateProductsTotal()"></div>
+        <div class="col-md-2"><label class="form-label small">الوزن</label><input class="form-control form-control-sm item-weight" type="number" step="0.01"></div>
+        <div class="col-md-2"><label class="form-label small">الحجم</label><input class="form-control form-control-sm item-size" type="text"></div>
+        <div class="col-md-1 d-flex align-items-end"><button class="btn btn-sm btn-outline-danger w-100" type="button" onclick="removeItemRow(this)">×</button></div>
+      `;
+      container.appendChild(row);
+    }
+
+    function removeItemRow(btn) {
+      btn.closest('.edit-item-row').remove();
+      updateProductsTotal();
+    }
+
+    // ── Submit Edit ───────────────────────────────────────────────────────
+
+    async function submitEdit() {
+      const items = [];
+      document.querySelectorAll('.edit-item-row').forEach(row => {
+        const name = row.querySelector('.item-name').value.trim();
+        if (name) {
+          items.push({
+            productName: name,
+            count: parseInt(row.querySelector('.item-count').value) || 1,
+            price: parseFloat(row.querySelector('.item-price').value) || 0,
+            netWeight: row.querySelector('.item-weight').value || null,
+            size: row.querySelector('.item-size').value || null,
+          });
+        }
+      });
+
+      const payload = {
+        amountGained:    document.getElementById('editAmountGained').value,
+        totalAmount:     document.getElementById('editTotalAmount').value,
+        additionalNotes: document.getElementById('editAdditionalNotes').value,
+        isOpenable:      document.getElementById('editIsOpenable').checked,
+        isFastDelivery:  document.getElementById('editIsFastDelivery').checked,
+        items,
+        receiver: {
+          fullName:   document.getElementById('editFullName').value.trim(),
+          phone1:     document.getElementById('editPhone1').value.trim(),
+          phone2:     document.getElementById('editPhone2').value.trim(),
+          address:    document.getElementById('editAddress').value.trim(),
+          governorate:document.getElementById('editGovernorate').value,
+          city:       document.getElementById('editCity').value,
+          notes:      document.getElementById('editReceiverNotes').value.trim(),
+        },
+      };
+
+      try {
+        const res  = await fetch(`/shipments/api/update/${SHIPMENT_ID}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) { showToast('success', data.message); setTimeout(() => location.reload(), 1200); }
+        else showToast('error', data.error || 'حدث خطأ');
+      } catch(e) { showToast('error', 'تعذر الاتصال بالخادم'); }
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────────────
+
+    function showToast(type, msg) {
+      const d = document.createElement('div');
+      d.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
+      d.style.zIndex = 9999;
+      d.innerHTML = `${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+      document.body.appendChild(d);
+      setTimeout(() => d.remove(), 4000);
+    }
