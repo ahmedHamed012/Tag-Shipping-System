@@ -22,7 +22,6 @@ const EXCLUDED_PATHS = [
   "node_modules",
   ".git",
   "public/uploads",
-  "backups",
   "temp",
 ];
 
@@ -165,10 +164,13 @@ async function applyUpdate(tag, onProgress) {
   assertConfigured();
   const log = (msg) => onProgress && onProgress(msg);
 
-  const workDir = path.join(APP_ROOT, "temp", `update-${Date.now()}`);
-  const zipPath = path.join(workDir, "release.zip");
+  const timestamp = Date.now();
+  const workDir   = path.join(APP_ROOT, "temp", `update-${timestamp}`);
+  const zipPath   = path.join(workDir, "release.zip");
   const extractDir = path.join(workDir, "extracted");
-  const backupDir = path.join(APP_ROOT, "backups", `backup-${Date.now()}`);
+  // Backup must live *outside* APP_ROOT — fsp.cp throws EINVAL when dest
+  // is a subdirectory of src, regardless of the filter function.
+  const backupDir = path.join(path.dirname(APP_ROOT), "app-backups", `backup-${timestamp}`);
 
   await fsp.mkdir(workDir, { recursive: true });
 

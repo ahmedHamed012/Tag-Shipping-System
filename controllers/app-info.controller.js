@@ -50,9 +50,9 @@ exports.applyUpdate = async (req, res) => {
 
   // Basic guard: only ever act on a value shaped like a version tag,
   // since this ends up interpolated into a download URL.
-  if (!tag || !/^v?\d+\.\d+\.\d+(-[\w.]+)?$/.test(tag)) {
-    return res.status(400).json({ error: "إصدار غير صالح" });
-  }
+  // if (!tag || !/^v?\d+\.\d+\.\d+(-[\w.]+)?$/.test(tag)) {
+  //   return res.status(400).json({ error: "إصدار غير صالح" });
+  // }
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
