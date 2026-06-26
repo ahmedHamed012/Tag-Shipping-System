@@ -140,7 +140,7 @@ block content
                   tr
                     td(colspan="5").text-center.text-muted لا توجد بيانات
             .d-flex.justify-content-end.mt-2
-              button.btn.btn-sm.btn-outline-primary(type="button", onclick="addLookupPriceListRow()")
+              button.btn.btn-sm.btn-outline-primary(type="button", onclick="addLookupPriceListRow({})")
                 i.bi.bi-plus-lg.me-1
                 | إضافة صف
           .modal-footer
@@ -149,6 +149,47 @@ block content
 
   script.
     let activeMerchantPriceListId = null;
+    let governoratesCache = []; // [{id, nameAr}]
+
+    const SHIPMENT_STATUSES = [
+      "طلب بيك اب",
+      "تم الاستقبال",
+      "قيد التوصيل",
+      "تم التوصيل",
+      "تسليم جزئي",
+      "استبدال",
+      "مرتجع مع دفع الشحن",
+      "رفض التسليم مع دفع الشحن",
+      "ملغاة",
+      "مؤجل",
+      "مرتجع للمستودع",
+      "مرتجع",
+      "مرتجع للتاجر",
+      "مرتجع جزئي",
+      "مرتجع استبدال",
+    ];
+
+    async function loadGovernoratesCache() {
+      if (governoratesCache.length) return;
+      const res  = await fetch('/countries/api/governorates-dropdown');
+      const data = await res.json();
+      if (data.success) governoratesCache = data.data; // [{id, nameAr}]
+    }
+
+    async function loadCitiesForSelect(citySelect, governorateId, selectedCity) {
+      citySelect.innerHTML = '<option value="">-- المدينة --</option>';
+      if (!governorateId) return;
+      const res  = await fetch(`/countries/api/cities/${governorateId}`);
+      const data = await res.json();
+      if (!data.success) return;
+      data.cities.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.nameAr;
+        opt.textContent = c.nameAr;
+        if (c.nameAr === selectedCity) opt.selected = true;
+        citySelect.appendChild(opt);
+      });
+    }
     async function editMerchant(id) {
       try {
         const response = await fetch(`/merchants/api/get/${id}`);
@@ -235,23 +276,76 @@ block content
       location.reload();
     }
 
-    function addLookupPriceListRow(item = { governorate: "", city: "", shipmentStatus: "", price: "" }) {
+    function buildGovOptions(selected) {
+      return '<option value="">-- المحافظة --</option>' +
+        governoratesCache.map(g =>
+          `<option value="${g.nameAr}" data-id="${g.id}"${g.nameAr === selected ? ' selected' : ''}>${g.nameAr}</option>`
+        ).join('');
+    }
+
+    function buildStatusOptions(selected) {
+      return '<option value="">-- حالة الشحنة --</option>' +
+        SHIPMENT_STATUSES.map(s =>
+          `<option value="${s}"${s === selected ? ' selected' : ''}>${s}</option>`
+        ).join('');
+    }
+
+    async function addLookupPriceListRow(item = { governorate: "", city: "", shipmentStatus: "", price: "" }) {
       const tbody = document.getElementById("lookupPriceListEditorBody");
       if (!tbody) return;
 
-      if (tbody.querySelector(".empty-lookup-row")) {
-        tbody.innerHTML = "";
-      }
+      if (tbody.querySelector(".empty-lookup-row")) tbody.innerHTML = "";
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><input class="form-control lookup-governorate" value="${item.governorate || ""}" placeholder="المحافظة"></td>
-        <td><input class="form-control lookup-city" value="${item.city || ""}" placeholder="المدينة"></td>
-        <td><input class="form-control lookup-status" value="${item.shipmentStatus || ""}" placeholder="حالة الشحنة"></td>
-        <td><input class="form-control lookup-price" type="number" min="0" step="0.01" value="${item.price || ""}" placeholder="السعر"></td>
-        <td><button class="btn btn-sm btn-outline-danger" type="button" onclick="this.closest('tr').remove(); normalizeLookupEmptyState();"><i class="bi bi-trash"></i></button></td>
+        <td>
+          <select class="form-select form-select-sm lookup-governorate">
+            ${buildGovOptions(item.governorate || "")}
+          </select>
+        </td>
+        <td>
+          <select class="form-select form-select-sm lookup-city" disabled>
+            <option value="">-- المدينة --</option>
+          </select>
+        </td>
+        <td>
+          <select class="form-select form-select-sm lookup-status">
+            ${buildStatusOptions(item.shipmentStatus || "")}
+          </select>
+        </td>
+        <td>
+          <input class="form-control form-control-sm lookup-price" type="number" min="0" step="0.01"
+            value="${item.price || ""}" placeholder="0.00">
+        </td>
+        <td>
+          <button class="btn btn-sm btn-outline-danger" type="button"
+            onclick="this.closest('tr').remove(); normalizeLookupEmptyState();">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
       `;
       tbody.appendChild(tr);
+
+      const govSelect  = tr.querySelector('.lookup-governorate');
+      const citySelect = tr.querySelector('.lookup-city');
+
+      // Wire governorate → city cascade
+      govSelect.addEventListener('change', () => {
+        const opt = govSelect.options[govSelect.selectedIndex];
+        const govId = opt.dataset.id || '';
+        citySelect.disabled = !govId;
+        loadCitiesForSelect(citySelect, govId, '');
+      });
+
+      // If editing an existing row, load cities immediately and select the saved city
+      if (item.governorate) {
+        const opt = [...govSelect.options].find(o => o.value === item.governorate);
+        const govId = opt ? opt.dataset.id : '';
+        if (govId) {
+          citySelect.disabled = false;
+          await loadCitiesForSelect(citySelect, govId, item.city || '');
+        }
+      }
     }
 
     function normalizeLookupEmptyState() {
@@ -265,6 +359,10 @@ block content
 
     async function openPriceListLookup(id) {
       activeMerchantPriceListId = id;
+
+      // Load governorates before opening so dropdowns are ready
+      await loadGovernoratesCache();
+
       const response = await fetch(`/merchants/api/get/${id}`);
       const data = await response.json();
       if (!data.success) return alert(data.error || "حدث خطأ");
@@ -275,7 +373,7 @@ block content
       tbody.innerHTML = "";
 
       if (merchant.priceList && merchant.priceList.length > 0) {
-        merchant.priceList.forEach((row) => addLookupPriceListRow(row));
+        for (const row of merchant.priceList) await addLookupPriceListRow(row);
       } else {
         normalizeLookupEmptyState();
       }
