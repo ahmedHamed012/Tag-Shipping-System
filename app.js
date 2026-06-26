@@ -49,6 +49,9 @@ app.use(attachAuthUser);
 const authRoutes = require("./routes/auth.routes");
 app.use("/auth", authRoutes);
 
+const appInfoRoutes = require("./routes/app-info.routes");
+app.use("/app-info", appInfoRoutes);
+
 // Home page
 app.get("/", (req, res) => {
   if (req.session?.user) {

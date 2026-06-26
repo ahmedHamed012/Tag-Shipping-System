@@ -1,0 +1,190 @@
+//- views/AppInfo/index.pug
+extends ../layouts/layout
+
+block content
+  .container-fluid#appInfoPage
+    .row.mb-4
+      .col-12
+        h2.mb-1 معلومات التطبيق
+        p.text-muted= appName
+
+    .row
+      .col-md-6
+        .card.shadow-sm
+          .card-body
+            h5.card-title.mb-3 الإصدار الحالي
+            .d-flex.align-items-center.justify-content-between
+              div
+                p.mb-1.small
+                  span.text-muted آخر فحص: 
+                  span#lastCheckedText لم يتم الفحص بعد
+                h3#currentVersionText.mb-0= 'v' + currentVersion
+              button.btn.btn-primary#checkUpdateBtn(type="button")
+                span#checkBtnText تحقق من وجود تحديثات
+                span.spinner-border.spinner-border-sm.ms-2.d-none#checkBtnSpinner(role="status")
+
+        .card.shadow-sm.mt-3.d-none#updateAvailableCard
+          .card-body
+            h5.card-title.text-success.mb-2 يوجد تحديث جديد
+            p.mb-1
+              strong الإصدار الجديد:
+              |
+              | 
+              span#latestVersionText
+            p.text-muted.small.mb-2#releaseDateText
+            .border.rounded.p-2.bg-light.mb-3#releaseNotesBox(style="max-height: 200px; overflow-y: auto; white-space: pre-wrap;")
+            button.btn.btn-success.w-100#applyUpdateBtn(type="button")
+              span#updateBtnText تحديث الآن
+              span.spinner-border.spinner-border-sm.ms-2.d-none#updateBtnSpinner(role="status")
+
+        .card.shadow-sm.mt-3.d-none#upToDateCard
+          .card-body.text-center.text-success
+            p.mb-0 التطبيق محدث لآخر إصدار ✓
+
+      .col-md-6
+        .card.shadow-sm.d-none#progressCard
+          .card-body
+            h5.card-title.mb-3 سجل التحديث
+            div#progressLog.border.rounded.p-3(style="height: 320px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; background:#1e1e1e; color:#d4d4d4;")
+
+        .card.shadow-sm.mt-3.d-none#restartingCard
+          .card-body.text-center
+            .spinner-border.text-primary.mb-2(role="status")
+            p.mb-0 جاري إعادة تشغيل التطبيق، يرجى الانتظار...
+
+  script.
+    (function () {
+      var checkBtn = document.getElementById('checkUpdateBtn');
+      var checkBtnText = document.getElementById('checkBtnText');
+      var checkBtnSpinner = document.getElementById('checkBtnSpinner');
+      var lastCheckedText = document.getElementById('lastCheckedText');
+      var updateAvailableCard = document.getElementById('updateAvailableCard');
+      var upToDateCard = document.getElementById('upToDateCard');
+      var latestVersionText = document.getElementById('latestVersionText');
+      var releaseDateText = document.getElementById('releaseDateText');
+      var releaseNotesBox = document.getElementById('releaseNotesBox');
+      var applyUpdateBtn = document.getElementById('applyUpdateBtn');
+      var updateBtnText = document.getElementById('updateBtnText');
+      var updateBtnSpinner = document.getElementById('updateBtnSpinner');
+      var progressCard = document.getElementById('progressCard');
+      var progressLog = document.getElementById('progressLog');
+      var restartingCard = document.getElementById('restartingCard');
+
+      var latestTag = null;
+
+      function logLine(text) {
+        var line = document.createElement('div');
+        line.textContent = text;
+        progressLog.appendChild(line);
+        progressLog.scrollTop = progressLog.scrollHeight;
+      }
+
+      checkBtn.addEventListener('click', function () {
+        checkBtn.disabled = true;
+        checkBtnText.textContent = 'جاري الفحص...';
+        checkBtnSpinner.classList.remove('d-none');
+        updateAvailableCard.classList.add('d-none');
+        upToDateCard.classList.add('d-none');
+
+        fetch('/app-info/check-update')
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            lastCheckedText.textContent = new Date().toLocaleString('ar-EG');
+            if (data.updateAvailable) {
+              latestTag = data.latestTag;
+              latestVersionText.textContent = 'v' + data.latestVersion;
+              releaseDateText.textContent = data.publishedAt
+                ? new Date(data.publishedAt).toLocaleString('ar-EG') : '';
+              releaseNotesBox.textContent = data.releaseNotes || 'لا توجد ملاحظات إصدار';
+              updateAvailableCard.classList.remove('d-none');
+            } else {
+              upToDateCard.classList.remove('d-none');
+            }
+          })
+          .catch(function (err) {
+            logLine('خطأ أثناء التحقق من التحديثات: ' + err.message);
+          })
+          .finally(function () {
+            checkBtn.disabled = false;
+            checkBtnText.textContent = 'تحقق من وجود تحديثات';
+            checkBtnSpinner.classList.add('d-none');
+          });
+      });
+
+      applyUpdateBtn.addEventListener('click', function () {
+        if (!latestTag) return;
+
+        applyUpdateBtn.disabled = true;
+        updateBtnText.textContent = 'جاري التحديث...';
+        updateBtnSpinner.classList.remove('d-none');
+        progressCard.classList.remove('d-none');
+        progressLog.innerHTML = '';
+
+        fetch('/app-info/apply-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tag: latestTag }),
+        }).then(function (res) {
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder();
+          var buffer = '';
+          var restarting = false;
+
+          function pump() {
+            return reader.read().then(function (result) {
+              if (result.done) return;
+              buffer += decoder.decode(result.value, { stream: true });
+              var parts = buffer.split('\n\n');
+              buffer = parts.pop();
+              parts.forEach(function (part) {
+                var line = part.replace(/^data:\s*/, '');
+                if (!line) return;
+                var evt = JSON.parse(line);
+                if (evt.type === 'log') logLine(evt.message);
+                else if (evt.type === 'error') logLine('خطأ: ' + evt.message);
+                else if (evt.type === 'restarting') { restarting = true; logLine(evt.message); }
+              });
+              return pump();
+            });
+          }
+
+          return pump().then(function () {
+            if (restarting) {
+              progressCard.classList.add('d-none');
+              restartingCard.classList.remove('d-none');
+              waitForServerAndReload();
+            } else {
+              applyUpdateBtn.disabled = false;
+              updateBtnText.textContent = 'تحديث الآن';
+              updateBtnSpinner.classList.add('d-none');
+            }
+          });
+        }).catch(function (err) {
+          logLine('فشل التحديث: ' + err.message);
+          applyUpdateBtn.disabled = false;
+          updateBtnText.textContent = 'تحديث الآن';
+          updateBtnSpinner.classList.add('d-none');
+        });
+      });
+
+      function waitForServerAndReload() {
+        var attempts = 0;
+        var maxAttempts = 30; // ~60s
+        var interval = setInterval(function () {
+          attempts++;
+          fetch('/app-info/health', { cache: 'no-store' })
+            .then(function (res) {
+              if (res.ok) {
+                clearInterval(interval);
+                window.location.reload();
+              }
+            })
+            .catch(function () { /* server still restarting, keep polling */ });
+
+          if (attempts >= maxAttempts) {
+            clearInterval(interval);
+            logLine('انتهت مهلة الانتظار، يرجى تحديث الصفحة يدويًا.');
+          }
+        }, 2000);
+      }
+    })();
