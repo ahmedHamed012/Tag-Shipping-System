@@ -1,7 +1,7 @@
 // controllers/appInfo.controller.js
 const path = require("path");
 const fs = require("fs");
-const { exec } = require("child_process");
+const { exec, spawn } = require("child_process");
 const updateService = require("../scripts/githubUpdate.service");
 
 const packageJsonPath = path.join(__dirname, "..", "package.json");
@@ -66,16 +66,33 @@ exports.applyUpdate = async (req, res) => {
   try {
     await updateService.applyUpdate(tag, (message) => send("log", message));
 
-    send("restarting", "تم تطبيق التحديث بنجاح، جاري إعادة تشغيل التطبيق...");
+    send("restarting", "تم نسخ الملفات بنجاح. جاري إيقاف التطبيق وتثبيت الحزم وتحديث قاعدة البيانات...");
     res.end();
 
-    // Give the response time to flush to the client before we ask
-    // PM2 to kill and respawn this very process.
+    // Spawn a detached shell process that:
+    //   1. Stops PM2 (releases the Prisma DLL file-lock on Windows)
+    //   2. Runs npm install + prisma generate + prisma migrate
+    //   3. Restarts PM2
+    // Must be detached + unref'd so it outlives this process being killed by PM2.
     setTimeout(() => {
       const pm2AppName = process.env.PM2_APP_NAME || "shipping-system";
-      exec(`pm2 restart ${pm2AppName}`, (error) => {
-        if (error) console.error("PM2 restart failed:", error);
+      const appRoot    = path.join(__dirname, "..");
+
+      const cmd = [
+        `pm2 stop ${pm2AppName}`,
+        `cd /d "${appRoot}"`,
+        `npm install --omit=dev`,
+        `npx prisma generate`,
+        `npx prisma migrate deploy`,
+        `pm2 start ${pm2AppName}`,
+      ].join(" && ");
+
+      const child = spawn("cmd.exe", ["/c", cmd], {
+        detached: true,
+        stdio:    "ignore",
+        windowsHide: true,
       });
+      child.unref();
     }, 1500);
   } catch (err) {
     console.error("Update failed:", err);

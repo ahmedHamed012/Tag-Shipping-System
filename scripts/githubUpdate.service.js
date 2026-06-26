@@ -195,19 +195,15 @@ async function applyUpdate(tag, onProgress) {
     log("نسخ ملفات الإصدار الجديد...");
     await copyTree(releaseRoot, APP_ROOT, releaseRoot);
 
-    log("تثبيت الحزم (npm install)...");
-    await runCommand("npm", ["install", "--omit=dev"], APP_ROOT, log);
-
-    log("تحديث Prisma Client...");
-    await runCommand("npx", ["prisma", "generate"], APP_ROOT, log);
-
-    log("تطبيق تحديثات قاعدة البيانات (prisma migrate deploy)...");
-    await runCommand("npx", ["prisma", "migrate", "deploy"], APP_ROOT, log);
-
     log("تنظيف الملفات المؤقتة...");
     await fsp.rm(workDir, { recursive: true, force: true });
 
-    log("تم تطبيق التحديث بنجاح.");
+    // npm install / prisma generate / prisma migrate are deferred to a
+    // detached subprocess that runs AFTER this process is stopped by PM2.
+    // On Windows the running process holds a file-lock on the Prisma
+    // query-engine DLL, so calling `prisma generate` while alive would
+    // always fail with EPERM.
+    log("تم نسخ ملفات الإصدار الجديد بنجاح. سيتم تثبيت الحزم وتحديث قاعدة البيانات بعد إعادة التشغيل...");
   } catch (err) {
     log("حدث خطأ أثناء التحديث، يتم استعادة النسخة السابقة...");
     try {
