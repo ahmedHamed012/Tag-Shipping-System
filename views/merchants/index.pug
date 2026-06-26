@@ -61,7 +61,8 @@ block content
                       - const facebookUrl = merchant.facebookPage ? (merchant.facebookPage.startsWith("http://") || merchant.facebookPage.startsWith("https://") ? merchant.facebookPage : `https://${merchant.facebookPage}`) : ""
                       - const instagramUrl = merchant.instagramPage ? (merchant.instagramPage.startsWith("http://") || merchant.instagramPage.startsWith("https://") ? merchant.instagramPage : `https://${merchant.instagramPage}`) : ""
                       - const whatsappNumber = (merchant.phone || "").replace(/\D/g, "")
-                      td= merchant.name
+                      td
+                        a(href=`/merchants/${merchant.id}/dashboard` style="text-decoration:underline;color:inherit;font-weight:600")= merchant.name
                       td= merchant.phone
                       td
                         .d-flex.gap-1

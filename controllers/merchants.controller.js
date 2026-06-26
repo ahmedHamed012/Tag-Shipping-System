@@ -396,6 +396,112 @@ exports.bulkUploadMerchants = async (req, res) => {
   }
 };
 
+const RETURNED_STATUSES = [
+  "مرتجع",
+  "مرتجع للتاجر",
+  "مرتجع للمستودع",
+  "مرتجع جزئي",
+  "مرتجع استبدال",
+  "مرتجع مع دفع الشحن",
+  "رفض التسليم مع دفع الشحن",
+];
+const DELIVERED_STATUS = "تم التسليم";
+
+exports.getMerchantDashboard = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const page  = parseInt(req.query.page,  10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip  = (page - 1) * limit;
+
+    const merchant = await prisma.merchant.findUnique({
+      where: { id },
+    });
+    if (!merchant || merchant.isDeleted) {
+      return res.status(404).render("error", { error: "التاجر غير موجود" });
+    }
+
+    // ── aggregate stats ────────────────────────────────────────────────────
+    const allShipments = await prisma.shipment.findMany({
+      where:   { merchantId: id, isDeleted: false },
+      select: {
+        shipmentStatus:          true,
+        totalAmount:             true,
+        amountGained:            true,
+        deliveryCollectedAmount: true,
+        receiver: { select: { city: true, governorate: true } },
+      },
+    });
+
+    const totalShipments    = allShipments.length;
+    const succeededShipments = allShipments.filter(s => s.shipmentStatus === DELIVERED_STATUS);
+    const returnedShipments  = allShipments.filter(s => RETURNED_STATUSES.includes(s.shipmentStatus));
+
+    const toNum = (v) => parseFloat(v || 0);
+
+    // Company's total earnings from this merchant
+    const totalGained = allShipments.reduce((acc, s) => acc + toNum(s.amountGained), 0);
+
+    // Total actually collected from customers on delivered shipments
+    const totalCollected = succeededShipments.reduce((acc, s) => acc + toNum(s.deliveryCollectedAmount), 0);
+
+    // What merchant deserves back = collected - shipping fees on delivered
+    const merchantDeserves = succeededShipments.reduce(
+      (acc, s) => acc + toNum(s.deliveryCollectedAmount) - toNum(s.amountGained), 0,
+    );
+
+    // Top 5 cities by shipment count
+    const cityCountMap = {};
+    for (const s of allShipments) {
+      const city = s.receiver?.city || "غير محدد";
+      cityCountMap[city] = (cityCountMap[city] || 0) + 1;
+    }
+    const topCities = Object.entries(cityCountMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([city, count]) => ({ city, count }));
+    const maxCityCount = topCities[0]?.count || 1;
+
+    // ── paginated shipments table ──────────────────────────────────────────
+    const [shipments, totalForPage] = await Promise.all([
+      prisma.shipment.findMany({
+        where:   { merchantId: id, isDeleted: false },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take:    limit,
+        include: {
+          receiver: { select: { fullName: true, phone1: true, city: true, governorate: true } },
+          courier:  { select: { fullName: true } },
+        },
+      }),
+      prisma.shipment.count({ where: { merchantId: id, isDeleted: false } }),
+    ]);
+
+    res.render("merchants/dashboard", {
+      merchant,
+      stats: {
+        total:     totalShipments,
+        succeeded: succeededShipments.length,
+        returned:  returnedShipments.length,
+        inProgress: totalShipments - succeededShipments.length - returnedShipments.length,
+        totalGained:       totalGained.toFixed(2),
+        totalCollected:    totalCollected.toFixed(2),
+        merchantDeserves:  merchantDeserves.toFixed(2),
+      },
+      topCities,
+      maxCityCount,
+      shipments,
+      currentPage:  page,
+      totalPages:   Math.ceil(totalForPage / limit),
+      total:        totalForPage,
+      limit,
+    });
+  } catch (error) {
+    console.error("getMerchantDashboard error:", error);
+    res.status(500).render("error", { error: error.message });
+  }
+};
+
 exports.updateMerchantPriceList = async (req, res) => {
   try {
     const { id } = req.params;

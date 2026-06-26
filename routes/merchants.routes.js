@@ -26,6 +26,7 @@ const upload = multer({
 
 router.get("/", merchantsController.getAllMerchants);
 router.get("/create", merchantsController.getCreateMerchantPage);
+router.get("/:id/dashboard", merchantsController.getMerchantDashboard);
 
 router.post("/api/create", upload.array("attachments", 10), merchantsController.createMerchant);
 router.get("/api/get/:id", merchantsController.getMerchant);

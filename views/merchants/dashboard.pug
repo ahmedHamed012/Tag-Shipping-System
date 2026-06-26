@@ -1,0 +1,211 @@
+extends ../layouts/layout
+
+block content
+  - var RETURNED_STATUSES = ["مرتجع","مرتجع للتاجر","مرتجع للمستودع","مرتجع جزئي","مرتجع استبدال","مرتجع مع دفع الشحن","رفض التسليم مع دفع الشحن"]
+  - var STATUS_COLOR = {"تم التسليم":"success","قيد التوصيل":"primary","تم الاستقبال":"info","طلب الاستلام":"warning","مرتجع":"dark","مرتجع للتاجر":"dark","مرتجع للمستودع":"secondary","مرتجع جزئي":"warning","مرتجع استبدال":"info","مرتجع مع دفع الشحن":"secondary","رفض التسليم مع دفع الشحن":"danger"}
+
+  .container-fluid.py-4
+
+    //- ── Header ───────────────────────────────────────────────────────────
+    .d-flex.align-items-center.gap-3.mb-4
+      a.btn.btn-outline-secondary.btn-sm(href="/merchants")
+        i.bi.bi-arrow-right
+      .flex-grow-1
+        h1.mb-0.fw-bold= merchant.name
+        span.text-muted.small
+          i.bi.bi-telephone.me-1
+          = merchant.phone
+          if merchant.address
+            span.ms-3
+              i.bi.bi-geo-alt.me-1
+              = merchant.address
+      .d-flex.gap-2
+        span.badge.fs-6(class=(merchant.isActive ? "bg-success" : "bg-secondary"))= merchant.isActive ? "نشط" : "معطل"
+
+    //- ── KPI cards ────────────────────────────────────────────────────────
+    .row.g-3.mb-4
+
+      .col-6.col-md-4.col-xl-2
+        .card.border-0.shadow-sm.h-100.text-center
+          .card-body.py-3
+            .text-muted.small.mb-1 إجمالي الشحنات
+            .fs-2.fw-bold.text-dark= stats.total
+
+      .col-6.col-md-4.col-xl-2
+        .card.border-0.shadow-sm.h-100.text-center
+          .card-body.py-3
+            .text-muted.small.mb-1 تم التسليم
+            .fs-2.fw-bold.text-success= stats.succeeded
+
+      .col-6.col-md-4.col-xl-2
+        .card.border-0.shadow-sm.h-100.text-center
+          .card-body.py-3
+            .text-muted.small.mb-1 مرتجعة
+            .fs-2.fw-bold.text-danger= stats.returned
+
+      .col-6.col-md-4.col-xl-2
+        .card.border-0.shadow-sm.h-100.text-center
+          .card-body.py-3
+            .text-muted.small.mb-1 قيد التنفيذ
+            .fs-2.fw-bold.text-warning= stats.inProgress
+
+      .col-6.col-md-4.col-xl-2
+        .card.border-0.shadow-sm.h-100.text-center
+          .card-body.py-3
+            .text-muted.small.mb-1 المحصل (مسلّم)
+            .fs-3.fw-bold.text-primary= stats.totalCollected + " ج.م"
+
+      .col-6.col-md-4.col-xl-2
+        .card.border-0.shadow-sm.h-100.text-center.border-2(style="border-color:#00b074!important;border-style:solid!important")
+          .card-body.py-3
+            .text-muted.small.mb-1 مستحقات التاجر
+            .fs-3.fw-bold(style="color:#00b074")= stats.merchantDeserves + " ج.م"
+
+    //- ── Charts row ───────────────────────────────────────────────────────
+    .row.g-3.mb-4
+
+      //- Delivery rate donut
+      .col-md-5.col-xl-4
+        .card.border-0.shadow-sm.h-100
+          .card-header.bg-white.fw-semibold.border-0.pb-0 نسبة التسليم
+          .card-body.d-flex.align-items-center.justify-content-center
+            canvas#deliveryChart(width="220" height="220")
+
+      //- Top cities bar chart
+      .col-md-7.col-xl-8
+        .card.border-0.shadow-sm.h-100
+          .card-header.bg-white.fw-semibold.border-0.pb-0 أكثر المدن شحناً
+          .card-body
+            if topCities.length > 0
+              each tc in topCities
+                .mb-2
+                  .d-flex.justify-content-between.small.mb-1
+                    span= tc.city
+                    span.fw-bold= tc.count + " شحنة"
+                  .progress(style="height:10px;border-radius:8px")
+                    .progress-bar(
+                      style=`width:${Math.round(tc.count / maxCityCount * 100)}%;background:#00b074;border-radius:8px`
+                    )
+            else
+              p.text-muted.text-center.mt-3 لا توجد بيانات
+
+    //- ── Shipments table ──────────────────────────────────────────────────
+    .card.border-0.shadow-sm
+      .card-header.bg-white.border-0.d-flex.align-items-center.justify-content-between
+        span.fw-semibold جميع شحنات التاجر
+        .d-flex.gap-2.align-items-center
+          select#limitSel.form-select.form-select-sm(style="width:auto" onchange="goPage(1)")
+            option(value="10"  selected=(limit===10))  10
+            option(value="20"  selected=(limit===20))  20
+            option(value="50"  selected=(limit===50))  50
+            option(value="100" selected=(limit===100)) 100
+          small.text-muted= "إجمالي: " + total
+
+      .table-responsive
+        table.table.table-hover.table-sm.mb-0(style="min-width:800px")
+          thead.table-light
+            tr
+              th(style="width:130px") رقم الشحنة
+              th العميل
+              th المنطقة
+              th المندوب
+              th.text-center(style="width:160px") الحالة
+              th.text-center(style="width:110px") الإجمالي
+              th.text-center(style="width:110px") المحصل
+              th(style="width:110px") التاريخ
+              th.text-center(style="width:60px") عرض
+
+          tbody
+            if shipments && shipments.length > 0
+              each s in shipments
+                - var sc = STATUS_COLOR[s.shipmentStatus] || "secondary"
+                tr
+                  td.fw-bold
+                    a(href="/shipments/" + s.id style="text-decoration:underline;color:inherit")
+                      span.badge.bg-info= s.policyNumber || ("SH-" + s.id)
+                  td
+                    div= s.receiver.fullName
+                    small.text-muted= s.receiver.phone1
+                  td
+                    small= [s.receiver.governorate, s.receiver.city].filter(Boolean).join(" / ") || "-"
+                  td= s.courier ? s.courier.fullName : "-"
+                  td.text-center
+                    span.badge(class="bg-" + sc)= s.shipmentStatus
+                  td.text-center.fw-bold= parseFloat(s.totalAmount).toFixed(2) + " ج.م"
+                  td.text-center
+                    if s.deliveryCollectedAmount
+                      span.text-success.fw-bold= parseFloat(s.deliveryCollectedAmount).toFixed(2) + " ج.م"
+                    else
+                      span.text-muted -
+                  td
+                    small= new Date(s.createdAt).toLocaleDateString("ar-EG")
+                  td.text-center
+                    a.btn.btn-sm.btn-outline-primary(href="/shipments/" + s.id title="عرض")
+                      i.bi.bi-eye
+            else
+              tr
+                td.text-center.py-5(colspan="9")
+                  i.bi.bi-inbox.d-block.mb-2(style="font-size:2rem;color:#ccc")
+                  span.text-muted لا توجد شحنات لهذا التاجر
+
+    //- ── Pagination ───────────────────────────────────────────────────────
+    .row.mt-3
+      .col-12
+        nav(aria-label="ترقيم الصفحات")
+          ul.pagination.pagination-sm.mb-0.justify-content-center
+            if currentPage > 1
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick="goPage(1)") أول
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${currentPage - 1})`) السابق
+            - for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++)
+              if i === currentPage
+                li.page-item.active
+                  span.page-link= i
+              else
+                li.page-item
+                  a.page-link(href="javascript:void(0)" onclick=`goPage(${i})`)= i
+            if currentPage < totalPages
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${currentPage + 1})`) التالي
+              li.page-item
+                a.page-link(href="javascript:void(0)" onclick=`goPage(${totalPages})`) أخير
+
+  script(src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js")
+  script.
+    // ── Delivery donut ────────────────────────────────────────────────────
+    (function () {
+      const succeeded  = !{stats.succeeded};
+      const returned   = !{stats.returned};
+      const inProgress = !{stats.inProgress};
+      const total      = !{stats.total};
+
+      new Chart(document.getElementById('deliveryChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['تم التسليم', 'مرتجعة', 'قيد التنفيذ'],
+          datasets: [{
+            data: [succeeded, returned, inProgress],
+            backgroundColor: ['#00b074', '#dc3545', '#ffc107'],
+            borderWidth: 0,
+          }],
+        },
+        options: {
+          cutout: '68%',
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Tajawal' }, padding: 12 } },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${ctx.raw} (${total ? Math.round(ctx.raw / total * 100) : 0}%)`,
+              },
+            },
+          },
+        },
+      });
+    })();
+
+    // ── Pagination ────────────────────────────────────────────────────────
+    function goPage(p) {
+      const lim = document.getElementById('limitSel').value;
+      window.location.href = `/merchants/!{merchant.id}/dashboard?page=${p}&limit=${lim}`;
+    }
